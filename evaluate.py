@@ -179,32 +179,30 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
 
         preds = transform.net(img_placeholder)
 
-        print(preds)
+        init_image = np.random.randn(1, 752, 1000, 3).astype(np.float32)
+        input_image = tf.Variable(preds)
 
-        # sess.run(tf.global_variables_initializer())
+        
 
-        loss_affine = affine_loss(preds, M, 1e4)
-        print(loss_affine)
-
-        preds = preds * loss_affine
-        print(preds)
-        # # loss_affine = tf.constant(0.00001)  # junk value
+        # loss_affine = affine_loss(preds, M, 1e4)
+        loss_affine = affine_loss(input_image, M, 1e4)
         train_op = tf.train.AdamOptimizer(1e-4).minimize(loss_affine)
-        print(train_op)
 
-
-        saver = tf.train.Saver()
-        if os.path.isdir(checkpoint_dir):
-            ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-            if ckpt and ckpt.model_checkpoint_path:
-                saver.restore(sess, ckpt.model_checkpoint_path)
-            else:
-                raise Exception("No checkpoint found...")
-        else:
-            saver.restore(sess, checkpoint_dir)
+        # saver = tf.train.Saver()
+        # if os.path.isdir(checkpoint_dir):
+        #     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+        #     if ckpt and ckpt.model_checkpoint_path:
+        #         saver.restore(sess, ckpt.model_checkpoint_path)
+        #     else:
+        #         raise Exception("No checkpoint found...")
+        # else:
+        #     saver.restore(sess, checkpoint_dir)
 
         num_iters = int(len(paths_out)/batch_size)
         for i in range(num_iters):
+
+            sess.run(tf.global_variables_initializer())
+
             pos = i * batch_size
             curr_batch_out = paths_out[pos:pos+batch_size]
             if is_paths:
@@ -219,20 +217,13 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
             else:
                 X = data_in[pos:pos+batch_size]
 
-            # sess.run(train_op)
-            # train_op.run(preds, feed_dict={img_placeholder:c_img})
+            test_X = np.random.randn(1, 750, 1000, 3).astype(np.float32)
+            _affine_preds = sess.run(train_op, feed_dict={img_placeholder:test_X})
+            print(_affine_preds)
             _preds = sess.run(preds, feed_dict={img_placeholder:X})
-            # _resized_preds = resize_img(_preds, (img_shape[0], img_shape[1]))
-            # print(_resized_preds.shape)
-
-            # test_X = numpy.expand_dims(c_img, axis=0)
-            # test_X = np.random.randn(1, 750, 1000, 3).astype(np.float32)
-            # _preds_lap = sess.run(train_op, feed_dict={img_placeholder:test_X})
-            # print(_preds_lap)
 
             for j, path_out in enumerate(curr_batch_out):
                 save_img(path_out, _preds[j])
-                # save_img(path_out, content_image)
 
         remaining_in = data_in[num_iters*batch_size:]
         remaining_out = paths_out[num_iters*batch_size:]
