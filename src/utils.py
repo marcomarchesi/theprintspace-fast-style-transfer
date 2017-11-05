@@ -4,6 +4,10 @@ def save_img(out_path, img):
     img = np.clip(img, 0, 255).astype(np.uint8)
     scipy.misc.imsave(out_path, img)
 
+def resize_img(src, size):
+    img = scipy.misc.imresize(src, size)
+    return img
+
 def scale_img(style_path, style_scale):
     scale = float(style_scale)
     o0, o1, o2 = scipy.misc.imread(style_path, mode='RGB').shape

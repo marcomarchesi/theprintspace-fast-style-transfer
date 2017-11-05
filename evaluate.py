@@ -4,7 +4,7 @@ sys.path.insert(0, 'src')
 import transform, numpy as np, vgg, pdb, os
 import scipy.misc
 import tensorflow as tf
-from utils import save_img, get_img, exists, list_files
+from utils import save_img, get_img, exists, list_files, resize_img
 from argparse import ArgumentParser
 from collections import defaultdict
 import time
@@ -13,7 +13,6 @@ import subprocess
 import numpy
 
 # add laplacian
-from PIL import Image
 from closed_form_matting import getLaplacian
 
 
@@ -22,6 +21,9 @@ startTime= datetime.now()
 
 BATCH_SIZE = 4
 DEVICE = '/cpu:0'
+soft_config = tf.ConfigProto(allow_soft_placement=True)
+soft_config.gpu_options.allow_growth = True
+sess = tf.Session(config=soft_config)
 
 
 def from_pipe(opts):
@@ -130,14 +132,32 @@ def from_pipe(opts):
         del pipe_in
         del pipe_out
 
+
+def affine_loss(output, M, weight):
+    loss_affine = 0.0
+    output_t = output / 255.
+    for Vc in tf.unstack(output_t, axis=-1):
+        Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
+        ravel_0 = tf.expand_dims(Vc_ravel, 0)
+        ravel_0 = tf.cast(ravel_0, tf.float32)
+        ravel_1 = tf.expand_dims(Vc_ravel, -1)
+        ravel_1 = tf.cast(ravel_1, tf.float32)
+        loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(M, ravel_1))
+
+    return loss_affine * weight
+
 # get img_shape
 def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
     assert len(paths_out) > 0
     is_paths = type(data_in[0]) == str
 
     # calculate Laplacian of each content image
-    content_image = np.array(Image.open(data_in[0]).convert("RGB"), dtype=np.float32)
+    c_img = get_img(data_in[0])
+    c_size = (int(numpy.ceil(c_img.shape[0] / 4) * 4), int(numpy.ceil(c_img.shape[1] / 4) * 4))
+    content_image = resize_img(get_img(data_in[0]), c_size) # hard-coded
     M = tf.to_float(getLaplacian(content_image / 255.))
+    # print(M)
+
 
     if is_paths:
         assert len(data_in) == len(paths_out)
@@ -146,17 +166,33 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
         assert data_in.size[0] == len(paths_out)
         img_shape = X[0].shape
 
+
     g = tf.Graph()
     batch_size = min(len(paths_out), batch_size)
     curr_num = 0
-    soft_config = tf.ConfigProto(allow_soft_placement=True)
-    soft_config.gpu_options.allow_growth = True
-    with g.as_default(), g.device(device_t), tf.Session(config=soft_config) as sess:
+
+    with g.as_default(), g.device(device_t), sess:
         batch_shape = (batch_size,) + img_shape
         img_placeholder = tf.placeholder(tf.float32, shape=batch_shape,
                                          name='img_placeholder')
+        
 
         preds = transform.net(img_placeholder)
+
+        print(preds)
+
+        # sess.run(tf.global_variables_initializer())
+
+        loss_affine = affine_loss(preds, M, 1e4)
+        print(loss_affine)
+
+        preds = preds * loss_affine
+        print(preds)
+        # # loss_affine = tf.constant(0.00001)  # junk value
+        train_op = tf.train.AdamOptimizer(1e-4).minimize(loss_affine)
+        print(train_op)
+
+
         saver = tf.train.Saver()
         if os.path.isdir(checkpoint_dir):
             ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
@@ -183,10 +219,21 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
             else:
                 X = data_in[pos:pos+batch_size]
 
+            # sess.run(train_op)
+            # train_op.run(preds, feed_dict={img_placeholder:c_img})
             _preds = sess.run(preds, feed_dict={img_placeholder:X})
+            # _resized_preds = resize_img(_preds, (img_shape[0], img_shape[1]))
+            # print(_resized_preds.shape)
+
+            # test_X = numpy.expand_dims(c_img, axis=0)
+            # test_X = np.random.randn(1, 750, 1000, 3).astype(np.float32)
+            # _preds_lap = sess.run(train_op, feed_dict={img_placeholder:test_X})
+            # print(_preds_lap)
+
             for j, path_out in enumerate(curr_batch_out):
                 save_img(path_out, _preds[j])
-                
+                # save_img(path_out, content_image)
+
         remaining_in = data_in[num_iters*batch_size:]
         remaining_out = paths_out[num_iters*batch_size:]
     if len(remaining_in) > 0:
