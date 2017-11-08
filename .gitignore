@@ -1,0 +1,6 @@
+data/
+tests/
+checkpoints/
+
+#Mac
+.DS_Store

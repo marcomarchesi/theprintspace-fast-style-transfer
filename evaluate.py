@@ -152,10 +152,10 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
     is_paths = type(data_in[0]) == str
 
     # calculate Laplacian of each content image
-    c_img = get_img(data_in[0])
-    c_size = (int(numpy.ceil(c_img.shape[0] / 4) * 4), int(numpy.ceil(c_img.shape[1] / 4) * 4))
-    content_image = resize_img(get_img(data_in[0]), c_size) # hard-coded
-    M = tf.to_float(getLaplacian(content_image / 255.))
+    # c_img = get_img(data_in[0])
+    # c_size = (int(numpy.ceil(c_img.shape[0] / 4) * 4), int(numpy.ceil(c_img.shape[1] / 4) * 4))
+    # content_image = resize_img(get_img(data_in[0]), c_size) # hard-coded
+    # M = tf.to_float(getLaplacian(content_image / 255.))
     # print(M)
 
 
@@ -179,30 +179,21 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
 
         preds = transform.net(img_placeholder)
 
-        init_image = np.random.randn(1, 752, 1000, 3).astype(np.float32)
-        input_image = tf.Variable(preds)
+        # sess.run(tf.global_variables_initializer())
+        # loss_affine = affine_loss(input_image, M, 1e4)
 
-        
-
-        # loss_affine = affine_loss(preds, M, 1e4)
-        loss_affine = affine_loss(input_image, M, 1e4)
-        train_op = tf.train.AdamOptimizer(1e-4).minimize(loss_affine)
-
-        # saver = tf.train.Saver()
-        # if os.path.isdir(checkpoint_dir):
-        #     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-        #     if ckpt and ckpt.model_checkpoint_path:
-        #         saver.restore(sess, ckpt.model_checkpoint_path)
-        #     else:
-        #         raise Exception("No checkpoint found...")
-        # else:
-        #     saver.restore(sess, checkpoint_dir)
+        saver = tf.train.Saver()
+        if os.path.isdir(checkpoint_dir):
+            ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+            else:
+                raise Exception("No checkpoint found...")
+        else:
+            saver.restore(sess, checkpoint_dir)
 
         num_iters = int(len(paths_out)/batch_size)
         for i in range(num_iters):
-
-            sess.run(tf.global_variables_initializer())
-
             pos = i * batch_size
             curr_batch_out = paths_out[pos:pos+batch_size]
             if is_paths:
@@ -217,10 +208,8 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
             else:
                 X = data_in[pos:pos+batch_size]
 
-            test_X = np.random.randn(1, 750, 1000, 3).astype(np.float32)
-            _affine_preds = sess.run(train_op, feed_dict={img_placeholder:test_X})
-            print(_affine_preds)
             _preds = sess.run(preds, feed_dict={img_placeholder:X})
+
 
             for j, path_out in enumerate(curr_batch_out):
                 save_img(path_out, _preds[j])

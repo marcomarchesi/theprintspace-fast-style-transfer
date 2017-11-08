@@ -18,7 +18,7 @@ CHECKPOINT_ITERATIONS = 2000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
 TRAIN_PATH = 'data/train2014'
 BATCH_SIZE = 4
-DEVICE = '/gpu:0'
+DEVICE = '/cpu:0'
 FRAC_GPU = 1
 
 def build_parser():
@@ -145,11 +145,11 @@ def main():
     ]
 
     for preds, losses, i, epoch in optimize(*args, **kwargs):
-        style_loss, content_loss, tv_loss, loss = losses
+        style_loss, content_loss, tv_loss, affine_loss, loss = losses
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
-        to_print = (style_loss, content_loss, tv_loss)
-        print('style: %s, content:%s, tv: %s' % to_print)
+        to_print = (style_loss, content_loss, tv_loss, affine_loss)
+        print('style: %s, content:%s, tv: %s, affine: %s' % to_print)
         if options.test:
             assert options.test_dir != False
             preds_path = '%s/%s_%s.png' % (options.test_dir,epoch,i)
