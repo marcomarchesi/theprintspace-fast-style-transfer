@@ -51,6 +51,12 @@ def getlaplacian1(i_arr, consts, epsilon=1e-5, win_rad=1):
 
     return a_sparse
 
+def getLaplacianAsThree(img):
+    h, w, _ = img.shape
+    coo = getlaplacian1(img, np.zeros(shape=(h, w)), 1e-5, 1).tocoo()
+    indices = np.mat([coo.row, coo.col]).transpose()
+    return (indices, coo.data, coo.shape)
+
 def getLaplacian(img):
     h, w, _ = img.shape
     coo = getlaplacian1(img, np.zeros(shape=(h, w)), 1e-5, 1).tocoo()

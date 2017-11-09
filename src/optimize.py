@@ -6,7 +6,7 @@ import transform
 from utils import get_img
 
 # add laplacian
-from closed_form_matting import getLaplacian
+from closed_form_matting import getLaplacian, getLaplacianAsThree
 
 STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
 CONTENT_LAYER = 'relu4_2'
@@ -82,6 +82,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         net = vgg.net(vgg_path, preds_pre)
 
 
+
+
         # affine loss
         affine_loss = get_affine_loss(preds_pre, X_M, 1e4)
 
@@ -123,6 +125,13 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         uid = random.randint(1, 100)
         print("UID: %s" % uid)
         M = []
+
+        X_batch = np.zeros(batch_shape, dtype=np.float32)
+        X_shape = np.squeeze(X_batch)
+        # M_X = tf.to_float(getLaplacian(X_shape / 255.))
+        indices, data, shape = getLaplacianAsThree(X_shape / 255.)
+        M_X = tf.SparseTensor(indices, data, shape)
+
         for epoch in range(epochs):
             num_examples = len(content_targets)
             iterations = 0
@@ -130,15 +139,15 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                 start_time = time.time()
                 curr = iterations * batch_size
                 step = curr + batch_size
-                X_batch = np.zeros(batch_shape, dtype=np.float32)
-                # print(content_targets[0])
-                # content_image = get_img(content_targets[0], (256,256,3)).astype(np.float32)
-                # M = sess.run(tf.to_float(getLaplacian(content_image / 255.)))
+                
+
 
                 for j, img_p in enumerate(content_targets[curr:step]):
                    print(img_p)
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
-                   M = sess.run(tf.to_float(getLaplacian(X_batch[j] / 255.)))
+                   # M = sess.run(tf.to_float(getLaplacian(X_batch[j] / 255.)))
+                   M = getLaplacianAsThree(X_batch[j] / 255.)
+
                    
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
@@ -174,6 +183,9 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                        saver = tf.train.Saver()
                        res = saver.save(sess, save_path)
                     yield(_preds, losses, iterations, epoch)
+
+                # check GraphDef size
+                print(sess.graph_def.ByteSize())
 
 def _tensor_size(tensor):
     from operator import mul
