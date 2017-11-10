@@ -57,6 +57,17 @@ def getLaplacianAsThree(img):
     indices = np.mat([coo.row, coo.col]).transpose()
     return (indices, coo.data, coo.shape)
 
+def getBatchLaplacian(img, batch_size):
+    laplacian = []
+    for i in range(batch_size):
+        item = img[i,:,:,:]
+        h, w, _ = item.shape
+        coo = getlaplacian1(item, np.zeros(shape=(h, w)), 1e-5, 1).tocoo()
+        indices = np.mat([coo.row, coo.col]).transpose()
+        data = [indices, coo.data, coo.shape]
+        laplacian.append(data)
+    return laplacian
+
 def getLaplacian(img):
     h, w, _ = img.shape
     coo = getlaplacian1(img, np.zeros(shape=(h, w)), 1e-5, 1).tocoo()

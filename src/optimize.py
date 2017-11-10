@@ -124,13 +124,11 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         import random
         uid = random.randint(1, 100)
         print("UID: %s" % uid)
-        M = []
 
+
+        M = []
         X_batch = np.zeros(batch_shape, dtype=np.float32)
-        X_shape = np.squeeze(X_batch)
-        # M_X = tf.to_float(getLaplacian(X_shape / 255.))
-        indices, data, shape = getLaplacianAsThree(X_shape / 255.)
-        M_X = tf.SparseTensor(indices, data, shape)
+
 
         for epoch in range(epochs):
             num_examples = len(content_targets)
@@ -141,13 +139,10 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                 step = curr + batch_size
                 
 
-
                 for j, img_p in enumerate(content_targets[curr:step]):
                    print(img_p)
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
-                   # M = sess.run(tf.to_float(getLaplacian(X_batch[j] / 255.)))
                    M = getLaplacianAsThree(X_batch[j] / 255.)
-
                    
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
