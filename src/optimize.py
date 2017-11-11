@@ -54,8 +54,9 @@ def optimize(content_targets, style_target, content_weight, style_weight,
     batch_shape = (batch_size,256,256,3)
     style_shape = (1,) + style_target.shape
 
+
     # precompute style features
-    with tf.Graph().as_default(), tf.device('/cpu:0'), tf.Session() as sess:
+    with tf.Session() as sess:
         style_image = tf.placeholder(tf.float32, shape=style_shape, name='style_image')
         style_image_pre = vgg.preprocess(style_image)
         net = vgg.net(vgg_path, style_image_pre)
@@ -66,14 +67,12 @@ def optimize(content_targets, style_target, content_weight, style_weight,
             gram = np.matmul(features.T, features) / features.size
             style_features[layer] = gram
 
-    with tf.Graph().as_default(), tf.Session() as sess:
         X_content = tf.placeholder(tf.float32, shape=batch_shape, name="X_content")
         X_pre = vgg.preprocess(X_content)
 
         # placeholder for M
         X_MM = tf.placeholder(tf.float32, name="X_MM")
  
-
         # precompute content features
         content_features = {}
         content_net = vgg.net(vgg_path, X_pre)
@@ -92,7 +91,7 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
 
         # affine loss
-        affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
+        affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, 1e3)
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
         assert _tensor_size(content_features[CONTENT_LAYER]) == _tensor_size(net[CONTENT_LAYER])
@@ -120,7 +119,26 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         x_tv = tf.nn.l2_loss(preds[:,:,1:,:] - preds[:,:,:batch_shape[2]-1,:])
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
+        # scalar_affine_loss = np.ravel(affine_loss)
+        # sc_loss = np.asscalar(scalar_affine_loss)
+        # print(style_loss)
+        # print(sc_loss)
+
         loss = content_loss + style_loss + tv_loss + affine_loss
+
+
+        # summaries for TensorBoard
+        with tf.name_scope('loss_summaries'):
+            tf.summary.scalar('content_loss', content_loss)
+            tf.summary.scalar('style_loss', style_loss)
+            tf.summary.scalar('tv_loss', tv_loss)
+            tf.summary.scalar('total_loss', loss)
+            # tf.summary.scalar('affine_loss', sc_loss)
+        merged = tf.summary.merge_all()
+        summary_writer = tf.summary.FileWriter('./logs',
+                                      sess.graph)
+
+        
 
         # overall loss
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
@@ -132,6 +150,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
         print("Number of examples: %i" % len(content_targets))
         print("Batch size: %i" % batch_size)
+
+        global_step = 0
 
         for epoch in range(epochs):
             num_examples = len(content_targets)
@@ -172,7 +192,10 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                        X_MM: M
                     }
 
-                    tup = sess.run(to_get, feed_dict = test_feed_dict)
+                    global_step = (epoch + 1) * iterations
+                    # print("Global Step: %i" % global_step)
+                    summary, tup = sess.run([merged, to_get], feed_dict = test_feed_dict)
+                    summary_writer.add_summary(summary, global_step)
                     _style_loss,_content_loss,_tv_loss, _affine_loss, _loss,_preds = tup
                     losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _loss)
                     if slow:
@@ -182,8 +205,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                        res = saver.save(sess, save_path)
                     yield(_preds, losses, iterations, epoch)
 
-                    # check GraphDef size
-                    print("GraphDef size: %i" % sess.graph_def.ByteSize())
+            # check GraphDef size
+            print("GraphDef size: %i" % sess.graph_def.ByteSize())
 
 def _tensor_size(tensor):
     from operator import mul

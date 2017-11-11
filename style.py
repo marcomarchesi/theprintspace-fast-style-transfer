@@ -17,7 +17,7 @@ NUM_EPOCHS = 2
 CHECKPOINT_DIR = 'checkpoints'
 CHECKPOINT_ITERATIONS = 1000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
-TRAIN_PATH = 'data/train'
+TRAIN_PATH = 'data/train2014'
 BATCH_SIZE = 1
 DEVICE = '/cpu:0'
 FRAC_GPU = 1
@@ -108,7 +108,6 @@ def check_opts(opts):
     assert opts.content_weight >= 0
     assert opts.style_weight >= 0
     assert opts.tv_weight >= 0
-    assert opts.affine_weight >= 0
     assert opts.learning_rate >= 0
 
 def _get_files(img_dir):
@@ -148,7 +147,6 @@ def main():
         options.content_weight,
         options.style_weight,
         options.tv_weight,
-        options.affine_weight
         options.vgg_path
     ]
 

@@ -3,6 +3,7 @@ tests/
 checkpoint/
 input/
 output/
+logs/
 
 #Mac
 .DS_Store
