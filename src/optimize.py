@@ -11,7 +11,7 @@ from closed_form_matting import getLaplacian, getLaplacianAsThree
 
 STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
 CONTENT_LAYER = 'relu4_2'
-DEVICES = '/cpu:0'
+DEVICES = '/gpu:0'
 
 laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
@@ -40,7 +40,7 @@ def get_affine_loss(output, batch_size, MM, weight):
 def optimize(content_targets, style_target, content_weight, style_weight,
              tv_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
-             learning_rate=1e-3, debug=False):
+             learning_rate=1e-3, debug=False, gpu=True):
     
     if slow:
         batch_size = 1
@@ -54,9 +54,13 @@ def optimize(content_targets, style_target, content_weight, style_weight,
     batch_shape = (batch_size,256,256,3)
     style_shape = (1,) + style_target.shape
 
+    if gpu == True:
+        DEVICES = '/gpu:0'
+    else:
+        DEVICES = '/cpu:0'
 
     # precompute style features
-    with tf.Session() as sess:
+    with tf.device(DEVICES), tf.Session() as sess:
         style_image = tf.placeholder(tf.float32, shape=style_shape, name='style_image')
         style_image_pre = vgg.preprocess(style_image)
         net = vgg.net(vgg_path, style_image_pre)

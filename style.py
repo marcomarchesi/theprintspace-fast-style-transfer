@@ -19,7 +19,6 @@ CHECKPOINT_ITERATIONS = 1000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
 TRAIN_PATH = 'data/train2014'
 BATCH_SIZE = 1
-DEVICE = '/cpu:0'
 FRAC_GPU = 1
 
 def build_parser():
@@ -35,6 +34,10 @@ def build_parser():
     parser.add_argument('--train-path', type=str,
                         dest='train_path', help='path to training images folder',
                         metavar='TRAIN_PATH', default=TRAIN_PATH)
+
+    parser.add_argument('--gpu', type=str,
+                        dest='gpu', help='is using GPU',
+                        metavar='GPU', default=True)
 
     parser.add_argument('--test', type=str,
                         dest='test', help='test image path',
@@ -91,6 +94,8 @@ def build_parser():
                         help='learning rate (default %(default)s)',
                         metavar='LEARNING_RATE', default=LEARNING_RATE)
 
+
+
     return parser
 
 def check_opts(opts):
@@ -132,7 +137,8 @@ def main():
         "print_iterations":options.checkpoint_iterations,
         "batch_size":options.batch_size,
         "save_path":os.path.join(options.checkpoint_dir,'fns.ckpt'),
-        "learning_rate":options.learning_rate
+        "learning_rate":options.learning_rate,
+        "gpu":options.gpu
     }
 
     if options.slow:
