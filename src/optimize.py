@@ -4,6 +4,7 @@ import vgg, pdb, time
 import tensorflow as tf, numpy as np, os
 import transform
 from utils import get_img
+import random
 
 # add laplacian
 from closed_form_matting import getLaplacian, getLaplacianAsThree
@@ -14,6 +15,10 @@ DEVICES = '/cpu:0'
 
 laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
+
+# for debug mode
+uid = random.randint(1, 100)
+# print("UID: %s" % uid)
 
 
 def get_affine_loss(output, batch_size, MM, weight):
@@ -48,7 +53,6 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
     batch_shape = (batch_size,256,256,3)
     style_shape = (1,) + style_target.shape
-    # print(style_shape)
 
     # precompute style features
     with tf.Graph().as_default(), tf.device('/cpu:0'), tf.Session() as sess:
@@ -88,15 +92,13 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
 
         # affine loss
-        affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, 1e4)
-
+        affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
         assert _tensor_size(content_features[CONTENT_LAYER]) == _tensor_size(net[CONTENT_LAYER])
         content_loss = content_weight * (2 * tf.nn.l2_loss(
             net[CONTENT_LAYER] - content_features[CONTENT_LAYER]) / content_size
         )
-
 
         style_losses = []
         for style_layer in STYLE_LAYERS:
@@ -111,7 +113,6 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
         style_loss = style_weight * functools.reduce(tf.add, style_losses) / batch_size
 
-
         # total variation denoising
         tv_y_size = _tensor_size(preds[:,1:,:,:])
         tv_x_size = _tensor_size(preds[:,:,1:,:])
@@ -124,9 +125,6 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         # overall loss
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         sess.run(tf.global_variables_initializer())
-        import random
-        uid = random.randint(1, 100)
-        print("UID: %s" % uid)
 
         batch_laplacian_shape = (batch_size, 1623076)
         M = np.zeros(batch_laplacian_shape, dtype=np.float32)

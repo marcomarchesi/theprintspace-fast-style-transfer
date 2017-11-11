@@ -10,6 +10,7 @@ import evaluate
 CONTENT_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
+AFFINE_WEIGHT = 1e3
 
 LEARNING_RATE = 1e-3
 NUM_EPOCHS = 2
@@ -80,6 +81,11 @@ def build_parser():
                         help='total variation regularization weight (default %(default)s)',
                         metavar='TV_WEIGHT', default=TV_WEIGHT)
     
+    parser.add_argument('--affine-weight', type=float,
+                        dest='affine_weight',
+                        help='affine regularization weight (default %(default)s)',
+                        metavar='AFFINE_WEIGHT', default=AFFINE_WEIGHT)
+
     parser.add_argument('--learning-rate', type=float,
                         dest='learning_rate',
                         help='learning rate (default %(default)s)',
@@ -102,6 +108,7 @@ def check_opts(opts):
     assert opts.content_weight >= 0
     assert opts.style_weight >= 0
     assert opts.tv_weight >= 0
+    assert opts.affine_weight >= 0
     assert opts.learning_rate >= 0
 
 def _get_files(img_dir):
@@ -141,6 +148,7 @@ def main():
         options.content_weight,
         options.style_weight,
         options.tv_weight,
+        options.affine_weight
         options.vgg_path
     ]
 
