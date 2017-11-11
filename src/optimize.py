@@ -12,6 +12,9 @@ STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
 CONTENT_LAYER = 'relu4_2'
 DEVICES = '/cpu:0'
 
+laplacian_shape = (65536, 65536)
+laplacian_indices = np.load('./laplacian_data/indices.npy')
+
 
 def get_affine_loss(output, M, weight):
     loss_affine = 0.0
@@ -82,8 +85,6 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         net = vgg.net(vgg_path, preds_pre)
 
 
-
-
         # affine loss
         affine_loss = get_affine_loss(preds_pre, X_M, 1e4)
 
@@ -125,10 +126,13 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         uid = random.randint(1, 100)
         print("UID: %s" % uid)
 
-
-        M = []
+        batch_laplacian_shape = (batch_size, 1623076)
+        M = np.zeros(batch_laplacian_shape, dtype=np.float32)
         X_batch = np.zeros(batch_shape, dtype=np.float32)
+        _M = []
 
+        print("Number of examples: %i" % len(content_targets))
+        print("Batch size: %i" % batch_size)
 
         for epoch in range(epochs):
             num_examples = len(content_targets)
@@ -138,18 +142,19 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                 curr = iterations * batch_size
                 step = curr + batch_size
                 
-
                 for j, img_p in enumerate(content_targets[curr:step]):
                    print(img_p)
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
-                   M = getLaplacianAsThree(X_batch[j] / 255.)
+                   _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
+                   _M = (laplacian_indices, values, laplacian_shape)
+                   M[j] = values
                    
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
 
                 feed_dict = {
                    X_content:X_batch,
-                   X_M:M
+                   X_M:_M
                 }
 
                 train_step.run(feed_dict=feed_dict)
@@ -166,7 +171,7 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                     to_get = [style_loss, content_loss, tv_loss, affine_loss, loss, preds]
                     test_feed_dict = {
                        X_content:X_batch,
-                       X_M:M
+                       X_M:_M
                     }
 
                     tup = sess.run(to_get, feed_dict = test_feed_dict)
@@ -179,8 +184,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                        res = saver.save(sess, save_path)
                     yield(_preds, losses, iterations, epoch)
 
-                # check GraphDef size
-                print(sess.graph_def.ByteSize())
+            # check GraphDef size
+            print("GraphDef size: %i" % sess.graph_def.ByteSize())
 
 def _tensor_size(tensor):
     from operator import mul

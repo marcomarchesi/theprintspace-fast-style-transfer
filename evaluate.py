@@ -229,11 +229,12 @@ def ffwd_different_dimensions(in_path, out_path, checkpoint_dir,
     in_path_of_shape = defaultdict(list)
     out_path_of_shape = defaultdict(list)
     for i in range(len(in_path)):
-        in_image = in_path[i]
-        out_image = out_path[i]
-        shape = "%dx%dx%d" % get_img(in_image).shape
-        in_path_of_shape[shape].append(in_image)
-        out_path_of_shape[shape].append(out_image)
+        if in_path[i].lower().endswith(('.png', '.jpg', '.jpeg')): 
+            in_image = in_path[i]
+            out_image = out_path[i]
+            shape = "%dx%dx%d" % get_img(in_image).shape
+            in_path_of_shape[shape].append(in_image)
+            out_path_of_shape[shape].append(out_image)
     for shape in in_path_of_shape:
         print('Processing images of shape %s' % shape)
         ffwd(in_path_of_shape[shape], out_path_of_shape[shape], 
