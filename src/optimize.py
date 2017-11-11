@@ -16,16 +16,18 @@ laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
 
 
-def get_affine_loss(output, M, weight):
+def get_affine_loss(output, M, MM, weight):
     loss_affine = 0.0
-    output_t = output / 255.
-    for Vc in tf.unstack(output_t, axis=-1):
-        Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
-        ravel_0 = tf.expand_dims(Vc_ravel, 0)
-        ravel_0 = tf.cast(ravel_0, tf.float32)
-        ravel_1 = tf.expand_dims(Vc_ravel, -1)
-        ravel_1 = tf.cast(ravel_1, tf.float32)
-        loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(M, ravel_1))
+    for i in range(2):
+        _M = tf.SparseTensor(laplacian_indices, MM[i], laplacian_shape)
+        output_t = output[i] / 255.
+        for Vc in tf.unstack(output_t, axis=-1):
+            Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
+            ravel_0 = tf.expand_dims(Vc_ravel, 0)
+            ravel_0 = tf.cast(ravel_0, tf.float32)
+            ravel_1 = tf.expand_dims(Vc_ravel, -1)
+            ravel_1 = tf.cast(ravel_1, tf.float32)
+            loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
 
     return loss_affine * weight
 
@@ -66,6 +68,7 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
         # placeholder for M
         X_M = tf.sparse_placeholder(tf.float32, name="X_M")
+        X_MM = tf.placeholder(tf.float32, name="X_MM")
  
 
         # precompute content features
@@ -86,7 +89,7 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
 
         # affine loss
-        affine_loss = get_affine_loss(preds_pre, X_M, 1e4)
+        affine_loss = get_affine_loss(preds_pre, X_M, X_MM, 1e4)
 
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
@@ -148,13 +151,16 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                    _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
                    _M = (laplacian_indices, values, laplacian_shape)
                    M[j] = values
+
+                print(M.shape)
                    
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
 
                 feed_dict = {
                    X_content:X_batch,
-                   X_M:_M
+                   X_M:_M,
+                   X_MM: M
                 }
 
                 train_step.run(feed_dict=feed_dict)
@@ -171,7 +177,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                     to_get = [style_loss, content_loss, tv_loss, affine_loss, loss, preds]
                     test_feed_dict = {
                        X_content:X_batch,
-                       X_M:_M
+                       X_M:_M,
+                       X_MM: M
                     }
 
                     tup = sess.run(to_get, feed_dict = test_feed_dict)

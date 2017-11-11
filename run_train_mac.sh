@@ -5,4 +5,4 @@ python style.py --style '/Users/marcomarchesi/Desktop/fast-style-transfer/style/
     --test-dir '/Users/marcomarchesi/Desktop/fast-style-transfer/input/' \
     --content-weight 1.5e1 \
     --checkpoint-iterations 2 \
-    --batch-size 1
+    --batch-size 2
