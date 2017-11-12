@@ -6,4 +6,5 @@ python style.py --style '/Users/marcomarchesi/Desktop/fast-style-transfer/style/
     --content-weight 1.5e1 \
     --checkpoint-iterations 2 \
     --batch-size 2 \
-    --gpu False
+    --gpu False \
+    --epochs 1

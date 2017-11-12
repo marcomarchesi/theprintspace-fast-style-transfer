@@ -15,6 +15,7 @@ DEVICES = '/gpu:0'
 
 laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
+# laplacian_values = np.load('./laplacian_data/dataset_laplacian.npy')
 
 # for debug mode
 uid = random.randint(1, 100)
@@ -123,11 +124,6 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         x_tv = tf.nn.l2_loss(preds[:,:,1:,:] - preds[:,:,:batch_shape[2]-1,:])
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
-        # scalar_affine_loss = np.ravel(affine_loss)
-        # sc_loss = np.asscalar(scalar_affine_loss)
-        # print(style_loss)
-        # print(sc_loss)
-
         loss = content_loss + style_loss + tv_loss + affine_loss
 
 
@@ -136,13 +132,9 @@ def optimize(content_targets, style_target, content_weight, style_weight,
             tf.summary.scalar('content_loss', content_loss)
             tf.summary.scalar('style_loss', style_loss)
             tf.summary.scalar('tv_loss', tv_loss)
-            tf.summary.scalar('total_loss', loss)
-            # tf.summary.scalar('affine_loss', sc_loss)
         merged = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter('./logs',
                                       sess.graph)
-
-        
 
         # overall loss
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
@@ -166,8 +158,10 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                 step = curr + batch_size
                 
                 for j, img_p in enumerate(content_targets[curr:step]):
-                   # print(img_p)
+                   print(img_p)
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
+                   # key = os.path.split(img_p)[1]
+                   # values = laplacian_values[()][key]
                    _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
                    M[j] = values
                    

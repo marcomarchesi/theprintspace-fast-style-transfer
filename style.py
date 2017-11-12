@@ -6,6 +6,7 @@ from optimize import optimize
 from argparse import ArgumentParser
 from utils import save_img, get_img, exists, list_files
 import evaluate
+import time
 
 CONTENT_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
@@ -17,7 +18,7 @@ NUM_EPOCHS = 2
 CHECKPOINT_DIR = 'checkpoints'
 CHECKPOINT_ITERATIONS = 1000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
-TRAIN_PATH = 'data/train2014'
+TRAIN_PATH = 'data/train'
 BATCH_SIZE = 1
 FRAC_GPU = 1
 
@@ -121,6 +122,7 @@ def _get_files(img_dir):
 
     
 def main():
+    start_time = time.time()
     parser = build_parser()
     options = parser.parse_args()
     check_opts(options)
@@ -172,8 +174,11 @@ def main():
         #     else:
         #         save_img(preds_path, img)
     ckpt_dir = options.checkpoint_dir
+    end_time  = time.time()
+    elapsed_time = end_time - start_time
     cmd_text = 'python evaluate.py --checkpoint %s ...' % ckpt_dir
-    print("Training complete. For evaluation:\n    `%s`" % cmd_text)
+    print("Training complete in %s. For evaluation:\n    `%s`" % (elapsed_time, cmd_text))
+
 
 if __name__ == '__main__':
     main()
