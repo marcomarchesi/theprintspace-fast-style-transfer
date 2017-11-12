@@ -12,8 +12,6 @@ import json
 import subprocess
 import numpy
 
-# add laplacian
-from closed_form_matting import getLaplacian
 
 
 from datetime import datetime 
@@ -151,14 +149,6 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
     assert len(paths_out) > 0
     is_paths = type(data_in[0]) == str
 
-    # calculate Laplacian of each content image
-    # c_img = get_img(data_in[0])
-    # c_size = (int(numpy.ceil(c_img.shape[0] / 4) * 4), int(numpy.ceil(c_img.shape[1] / 4) * 4))
-    # content_image = resize_img(get_img(data_in[0]), c_size) # hard-coded
-    # M = tf.to_float(getLaplacian(content_image / 255.))
-    # print(M)
-
-
     if is_paths:
         assert len(data_in) == len(paths_out)
         img_shape = get_img(data_in[0]).shape
@@ -178,9 +168,6 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
         
 
         preds = transform.net(img_placeholder)
-
-        # sess.run(tf.global_variables_initializer())
-        # loss_affine = affine_loss(input_image, M, 1e4)
 
         saver = tf.train.Saver()
         if os.path.isdir(checkpoint_dir):

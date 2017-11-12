@@ -155,6 +155,7 @@ def main():
         options.content_weight,
         options.style_weight,
         options.tv_weight,
+        options.affine_weight,
         options.vgg_path
     ]
 

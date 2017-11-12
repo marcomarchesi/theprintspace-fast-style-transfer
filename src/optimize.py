@@ -39,7 +39,7 @@ def get_affine_loss(output, batch_size, MM, weight):
 
 # np arr, np arr
 def optimize(content_targets, style_target, content_weight, style_weight,
-             tv_weight, vgg_path, epochs=2, print_iterations=1,
+             tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
              learning_rate=1e-3, debug=False, gpu=True):
     
@@ -96,7 +96,7 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
 
         # affine loss
-        affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, 1e3)
+        affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
         assert _tensor_size(content_features[CONTENT_LAYER]) == _tensor_size(net[CONTENT_LAYER])
