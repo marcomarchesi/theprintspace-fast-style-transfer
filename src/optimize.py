@@ -41,7 +41,7 @@ def get_affine_loss(output, batch_size, MM, weight):
 def optimize(content_targets, style_target, content_weight, style_weight,
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
-             learning_rate=1e-3, debug=False, gpu=True):
+             learning_rate=1e-3, debug=False, gpu=True, affine=True):
     
     if slow:
         batch_size = 1
@@ -76,7 +76,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         X_pre = vgg.preprocess(X_content)
 
         # placeholder for M
-        X_MM = tf.placeholder(tf.float32, name="X_MM")
+        if affine == True:
+            X_MM = tf.placeholder(tf.float32, name="X_MM")
  
         # precompute content features
         content_features = {}
@@ -96,7 +97,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
 
         # affine loss
-        affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
+        if affine == True:
+            affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
         assert _tensor_size(content_features[CONTENT_LAYER]) == _tensor_size(net[CONTENT_LAYER])
@@ -124,7 +126,10 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         x_tv = tf.nn.l2_loss(preds[:,:,1:,:] - preds[:,:,:batch_shape[2]-1,:])
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
-        loss = content_loss + style_loss + tv_loss + affine_loss
+        if affine == True:
+            loss = content_loss + style_loss + tv_loss + affine_loss
+        else:
+            loss = content_loss + style_loss + tv_loss
 
 
         # summaries for TensorBoard
@@ -140,8 +145,9 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         sess.run(tf.global_variables_initializer())
 
-        batch_laplacian_shape = (batch_size, 1623076)
-        M = np.zeros(batch_laplacian_shape, dtype=np.float32)
+        if affine == True:
+            batch_laplacian_shape = (batch_size, 1623076)
+            M = np.zeros(batch_laplacian_shape, dtype=np.float32)
         X_batch = np.zeros(batch_shape, dtype=np.float32)
 
         print("Number of examples: %i" % len(content_targets))
@@ -162,16 +168,22 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
                    # key = os.path.split(img_p)[1]
                    # values = laplacian_values[()][key]
-                   _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
-                   M[j] = values
+                   if affine == True:
+                    _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
+                    M[j] = values
                    
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
 
-                feed_dict = {
-                   X_content:X_batch,
-                   X_MM: M
-                }
+                if affine == True:
+                    feed_dict = {
+                       X_content:X_batch,
+                       X_MM: M
+                    }
+                else:
+                    feed_dict = {
+                       X_content:X_batch
+                    }
 
                 train_step.run(feed_dict=feed_dict)
                 end_time = time.time()
@@ -184,18 +196,30 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                 is_last = epoch == epochs - 1 and iterations * batch_size >= num_examples
                 should_print = is_print_iter or is_last
                 if should_print:
-                    to_get = [style_loss, content_loss, tv_loss, affine_loss, loss, preds]
-                    test_feed_dict = {
-                       X_content:X_batch,
-                       X_MM: M
-                    }
+                    if affine == True:
+                        to_get = [style_loss, content_loss, tv_loss, affine_loss, loss, preds]
+                        test_feed_dict = {
+                           X_content:X_batch,
+                           X_MM: M
+                        }
+                    else:
+                        to_get = [style_loss, content_loss, tv_loss, loss, preds]
+                        test_feed_dict = {
+                           X_content:X_batch
+                        }
+
 
                     global_step = (epoch + 1) * iterations
                     # print("Global Step: %i" % global_step)
                     summary, tup = sess.run([merged, to_get], feed_dict = test_feed_dict)
                     summary_writer.add_summary(summary, global_step)
-                    _style_loss,_content_loss,_tv_loss, _affine_loss, _loss,_preds = tup
-                    losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _loss)
+                    if affine == True:
+                        _style_loss,_content_loss,_tv_loss, _affine_loss, _loss,_preds = tup
+                        losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _loss)
+                    else:
+                        _style_loss,_content_loss,_tv_loss, _loss,_preds = tup
+                        losses = (_style_loss, _content_loss, _tv_loss, _loss)
+
                     if slow:
                        _preds = vgg.unprocess(_preds)
                     else:

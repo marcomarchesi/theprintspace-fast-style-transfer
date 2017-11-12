@@ -7,4 +7,5 @@ python style.py --style '/Users/marcomarchesi/Desktop/fast-style-transfer/style/
     --checkpoint-iterations 2 \
     --batch-size 2 \
     --gpu False \
-    --epochs 1
+    --epochs 1 \
+    --affine True

@@ -84,6 +84,11 @@ def build_parser():
                         dest='tv_weight',
                         help='total variation regularization weight (default %(default)s)',
                         metavar='TV_WEIGHT', default=TV_WEIGHT)
+
+    parser.add_argument('--affine', type=str,
+                        dest='affine',
+                        help='affine loss enabled',
+                        metavar='AFFINE', default=True)
     
     parser.add_argument('--affine-weight', type=float,
                         dest='affine_weight',
@@ -140,7 +145,8 @@ def main():
         "batch_size":options.batch_size,
         "save_path":os.path.join(options.checkpoint_dir,'fns.ckpt'),
         "learning_rate":options.learning_rate,
-        "gpu":options.gpu
+        "gpu":options.gpu,
+        "affine":options.affine
     }
 
     if options.slow:
@@ -159,12 +165,20 @@ def main():
         options.vgg_path
     ]
 
+
     for preds, losses, i, epoch in optimize(*args, **kwargs):
-        style_loss, content_loss, tv_loss, affine_loss, loss = losses
+        if options.affine == True:
+            style_loss, content_loss, tv_loss, affine_loss, loss = losses
+            to_print = (style_loss, content_loss, tv_loss, affine_loss)
+        else:
+            style_loss, content_loss, tv_loss, loss = losses
+            to_print = (style_loss, content_loss, tv_loss)
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
-        to_print = (style_loss, content_loss, tv_loss, affine_loss)
-        print('style: %s, content:%s, tv: %s, affine: %s' % to_print)
+        if options.affine == True:
+            print('style: %s, content:%s, tv: %s, affine: %s' % to_print)
+        else:
+            print('style: %s, content:%s, tv: %s' % to_print)
         # if options.test:
         #     assert options.test_dir != False
         #     preds_path = '%s/%s_%s.png' % (options.test_dir,epoch,i)
@@ -178,7 +192,7 @@ def main():
     end_time  = time.time()
     elapsed_time = end_time - start_time
     cmd_text = 'python evaluate.py --checkpoint %s ...' % ckpt_dir
-    print("Training complete in %s. For evaluation:\n    `%s`" % (elapsed_time, cmd_text))
+    print("Training complete in %s seconds. For evaluation:\n    `%s`" % (elapsed_time, cmd_text))
 
 
 if __name__ == '__main__':
