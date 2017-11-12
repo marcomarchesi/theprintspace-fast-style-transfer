@@ -35,7 +35,7 @@ def get_affine_loss(output, batch_size, MM, weight):
             ravel_1 = tf.cast(ravel_1, tf.float32)
             loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
 
-    return loss_affine * weight
+    return tf.reduce_mean(loss_affine * weight)
 
 # np arr, np arr
 def optimize(content_targets, style_target, content_weight, style_weight,
@@ -126,6 +126,9 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         x_tv = tf.nn.l2_loss(preds[:,:,1:,:] - preds[:,:,:batch_shape[2]-1,:])
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
+        #define affine_loss for TensorBoard
+        # affine_loss = 0.0
+
         if affine == True:
             loss = content_loss + style_loss + tv_loss + affine_loss
         else:
@@ -137,6 +140,9 @@ def optimize(content_targets, style_target, content_weight, style_weight,
             tf.summary.scalar('content_loss', content_loss)
             tf.summary.scalar('style_loss', style_loss)
             tf.summary.scalar('tv_loss', tv_loss)
+            tf.summary.scalar('affine_loss', affine_loss)
+            tf.summary.scalar('total_loss', loss)
+
         merged = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter('./logs',
                                       sess.graph)

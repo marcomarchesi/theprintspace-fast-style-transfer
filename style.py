@@ -191,8 +191,7 @@ def main():
     ckpt_dir = options.checkpoint_dir
     end_time  = time.time()
     elapsed_time = end_time - start_time
-    cmd_text = 'python evaluate.py --checkpoint %s ...' % ckpt_dir
-    print("Training complete in %s seconds. For evaluation:\n    `%s`" % (elapsed_time, cmd_text))
+    print("Training complete in %s seconds." % (elapsed_time))
 
 
 if __name__ == '__main__':
