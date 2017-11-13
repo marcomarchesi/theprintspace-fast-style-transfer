@@ -18,7 +18,7 @@ NUM_EPOCHS = 2
 CHECKPOINT_DIR = 'checkpoints'
 CHECKPOINT_ITERATIONS = 1000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
-TRAIN_PATH = 'data/train2014'
+TRAIN_PATH = 'data/train'
 BATCH_SIZE = 1
 FRAC_GPU = 1
 
@@ -36,9 +36,7 @@ def build_parser():
                         dest='train_path', help='path to training images folder',
                         metavar='TRAIN_PATH', default=TRAIN_PATH)
 
-    parser.add_argument('--gpu', type=str,
-                        dest='gpu', help='is using GPU',
-                        metavar='GPU', default=True)
+    parser.add_argument('--no-gpu', dest='no_gpu', action='store_true', help='not using GPU', default=False)
 
     parser.add_argument('--test', type=str,
                         dest='test', help='test image path',
@@ -49,8 +47,7 @@ def build_parser():
                         metavar='TEST_DIR', default=False)
 
     parser.add_argument('--slow', dest='slow', action='store_true',
-                        help='gatys\' approach (for debugging, not supported)',
-                        default=False)
+                        help='gatys\' approach (for debugging, not supported)', default=False)
 
     parser.add_argument('--epochs', type=int,
                         dest='epochs', help='num epochs',
@@ -85,10 +82,8 @@ def build_parser():
                         help='total variation regularization weight (default %(default)s)',
                         metavar='TV_WEIGHT', default=TV_WEIGHT)
 
-    parser.add_argument('--affine', type=str,
-                        dest='affine',
-                        help='affine loss enabled',
-                        metavar='AFFINE', default=True)
+    parser.add_argument('--affine', dest='affine', action='store_true',
+                        help='affine loss enabled', default=False)
     
     parser.add_argument('--affine-weight', type=float,
                         dest='affine_weight',
@@ -141,11 +136,11 @@ def main():
     kwargs = {
         "slow":options.slow,
         "epochs":options.epochs,
-        "print_iterations":10,
+        "print_iterations":options.checkpoint_iterations,
         "batch_size":options.batch_size,
         "save_path":os.path.join(options.checkpoint_dir,'fns.ckpt'),
         "learning_rate":options.learning_rate,
-        "gpu":options.gpu,
+        "no_gpu":options.no_gpu,
         "affine":options.affine
     }
 
