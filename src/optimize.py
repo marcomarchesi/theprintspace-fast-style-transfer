@@ -12,6 +12,7 @@ from closed_form_matting import getLaplacian, getLaplacianAsThree
 STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
 CONTENT_LAYER = 'relu4_2'
 DEVICES = '/gpu:0'
+config = tf.ConfigProto(allow_soft_placement=True)
 
 laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
@@ -42,6 +43,12 @@ def optimize(content_targets, style_target, content_weight, style_weight,
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
              learning_rate=1e-3, debug=False, gpu=True, affine=True):
+
+
+    
+
+    if affine == True:
+        batch_size = 1
     
     if slow:
         batch_size = 1
@@ -61,7 +68,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         DEVICES = '/cpu:0'
 
     # precompute style features
-    with tf.device(DEVICES), tf.Session() as sess:
+    with tf.device(DEVICES), tf.Session(config=config) as sess:
+
         style_image = tf.placeholder(tf.float32, shape=style_shape, name='style_image')
         style_image_pre = vgg.preprocess(style_image)
         net = vgg.net(vgg_path, style_image_pre)
@@ -126,8 +134,6 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         x_tv = tf.nn.l2_loss(preds[:,:,1:,:] - preds[:,:,:batch_shape[2]-1,:])
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
-        #define affine_loss for TensorBoard
-        # affine_loss = 0.0
 
         if affine == True:
             loss = content_loss + style_loss + tv_loss + affine_loss
@@ -140,7 +146,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
             tf.summary.scalar('content_loss', content_loss)
             tf.summary.scalar('style_loss', style_loss)
             tf.summary.scalar('tv_loss', tv_loss)
-            tf.summary.scalar('affine_loss', affine_loss)
+            if affine == True:
+                tf.summary.scalar('affine_loss', affine_loss)
             tf.summary.scalar('total_loss', loss)
 
         merged = tf.summary.merge_all()
@@ -160,6 +167,11 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         print("Batch size: %i" % batch_size)
 
         global_step = 0
+
+        if affine == True:
+            saver = tf.train.Saver()
+            saver.restore(sess, save_path)
+
 
         for epoch in range(epochs):
             num_examples = len(content_targets)
@@ -229,8 +241,11 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                     if slow:
                        _preds = vgg.unprocess(_preds)
                     else:
-                       saver = tf.train.Saver()
-                       res = saver.save(sess, save_path)
+                        if affine == False:
+                            saver = tf.train.Saver()
+                            res = saver.save(sess, save_path)
+                        else:
+                            res = saver.save(sess, save_path)
                     yield(_preds, losses, iterations, epoch)
 
             # check GraphDef size

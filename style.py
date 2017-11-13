@@ -18,7 +18,7 @@ NUM_EPOCHS = 2
 CHECKPOINT_DIR = 'checkpoints'
 CHECKPOINT_ITERATIONS = 1000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
-TRAIN_PATH = 'data/train'
+TRAIN_PATH = 'data/train2014'
 BATCH_SIZE = 1
 FRAC_GPU = 1
 
@@ -141,7 +141,7 @@ def main():
     kwargs = {
         "slow":options.slow,
         "epochs":options.epochs,
-        "print_iterations":options.checkpoint_iterations,
+        "print_iterations":10,
         "batch_size":options.batch_size,
         "save_path":os.path.join(options.checkpoint_dir,'fns.ckpt'),
         "learning_rate":options.learning_rate,

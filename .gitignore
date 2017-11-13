@@ -1,6 +1,7 @@
 data/
 tests/
 checkpoint/
+checkpoint*
 input/
 output/
 logs/
