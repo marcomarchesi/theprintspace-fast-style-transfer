@@ -45,7 +45,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
              learning_rate=1e-3, debug=False, no_gpu=False, affine=False):
 
 
-    
+    DEVICES = '/gpu:0'
+    config = tf.ConfigProto(allow_soft_placement=True)
 
     if affine:
         batch_size = 1
@@ -67,7 +68,7 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         DEVICES = '/cpu:0' 
 
     # precompute style features
-    with tf.device(DEVICES), tf.Session(config=config) as sess:
+    with tf.Graph().as_default(), tf.device(DEVICES), tf.Session(config=config) as sess:
 
         style_image = tf.placeholder(tf.float32, shape=style_shape, name='style_image')
         style_image_pre = vgg.preprocess(style_image)
@@ -78,7 +79,7 @@ def optimize(content_targets, style_target, content_weight, style_weight,
             features = np.reshape(features, (-1, features.shape[3]))
             gram = np.matmul(features.T, features) / features.size
             style_features[layer] = gram
-
+    with tf.Graph().as_default(), tf.device(DEVICES), tf.Session(config=config) as sess:
         X_content = tf.placeholder(tf.float32, shape=batch_shape, name="X_content")
         X_pre = vgg.preprocess(X_content)
 
@@ -134,10 +135,10 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
 
-        if affine:
-            loss = content_loss + style_loss + tv_loss + affine_loss
-        else:
-            loss = content_loss + style_loss + tv_loss
+        # if affine:
+        #     loss = content_loss + style_loss + tv_loss + affine_loss
+        # else:
+        loss = content_loss + style_loss + tv_loss
 
 
         # summaries for TensorBoard
@@ -160,6 +161,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         if affine:
             batch_laplacian_shape = (batch_size, 1623076)
             M = np.zeros(batch_laplacian_shape, dtype=np.float32)
+
+        # DOES THIS POSITION COULD AFFECT THE TRAINING?    
         X_batch = np.zeros(batch_shape, dtype=np.float32)
 
         print("Number of examples: %i" % len(content_targets))
@@ -169,8 +172,8 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
         if affine:
             saver = tf.train.Saver()
-            saver.restore(sess, save_path)
-            print("checkpoint restored")
+            #saver.restore(sess, save_path)
+            #print("checkpoint restored")
 
 
         for epoch in range(epochs):
