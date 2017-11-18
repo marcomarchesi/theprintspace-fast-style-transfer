@@ -11,10 +11,11 @@ import time
 CONTENT_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
-AFFINE_WEIGHT = 1e3
+AFFINE_WEIGHT = 1e4
 
 LEARNING_RATE = 1e-3
 NUM_EPOCHS = 2
+NUM_EXAMPLES = 1000
 CHECKPOINT_DIR = 'checkpoints'
 CHECKPOINT_ITERATIONS = 2000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
@@ -95,6 +96,11 @@ def build_parser():
                         help='learning rate (default %(default)s)',
                         metavar='LEARNING_RATE', default=LEARNING_RATE)
 
+    parser.add_argument('--num-examples', type=float,
+                    dest='num_examples',
+                    help='number of examples (default %(default)s)',
+                    metavar='NUM_EXAMPLES', default=NUM_EXAMPLES)
+
 
 
     return parser
@@ -115,6 +121,7 @@ def check_opts(opts):
     assert opts.style_weight >= 0
     assert opts.tv_weight >= 0
     assert opts.learning_rate >= 0
+    assert opts.num_examples >= 0
 
 def _get_files(img_dir):
     files = list_files(img_dir)
@@ -140,6 +147,7 @@ def main():
         "batch_size":options.batch_size,
         "save_path":os.path.join(options.checkpoint_dir,'fns.ckpt'),
         "learning_rate":options.learning_rate,
+        "num_examples": options.num_examples,
         "no_gpu":options.no_gpu,
         "affine":options.affine
     }
@@ -162,7 +170,7 @@ def main():
 
 
     for preds, losses, i, epoch in optimize(*args, **kwargs):
-        if options.affine == True:
+        if options.affine:
             style_loss, content_loss, tv_loss, affine_loss, loss = losses
             to_print = (style_loss, content_loss, tv_loss, affine_loss)
         else:
@@ -170,7 +178,7 @@ def main():
             to_print = (style_loss, content_loss, tv_loss)
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
-        if options.affine == True:
+        if options.affine:
             print('style: %s, content:%s, tv: %s, affine: %s' % to_print)
         else:
             print('style: %s, content:%s, tv: %s' % to_print)

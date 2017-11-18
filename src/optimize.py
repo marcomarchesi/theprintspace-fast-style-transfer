@@ -42,7 +42,7 @@ def get_affine_loss(output, batch_size, MM, weight):
 def optimize(content_targets, style_target, content_weight, style_weight,
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
-             learning_rate=1e-3, debug=False, no_gpu=False, affine=False):
+             learning_rate=1e-3, debug=False, no_gpu=False, affine=False, num_examples=1000):
 
 
     DEVICES = '/gpu:0'
@@ -177,7 +177,7 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
 
         for epoch in range(epochs):
-            num_examples = len(content_targets)
+            # num_examples = len(content_targets)
             iterations = 0
             while iterations * batch_size < num_examples:
                 start_time = time.time()
