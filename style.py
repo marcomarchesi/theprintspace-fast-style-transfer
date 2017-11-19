@@ -8,6 +8,9 @@ from utils import save_img, get_img, exists, list_files
 import evaluate
 import time
 
+#for copying
+from shutil import copyfile
+
 CONTENT_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
@@ -19,7 +22,7 @@ NUM_EXAMPLES = 1000
 CHECKPOINT_DIR = 'checkpoints'
 CHECKPOINT_ITERATIONS = 2000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
-TRAIN_PATH = 'data/train2014'
+TRAIN_PATH = 'data/train'
 BATCH_SIZE = 1
 FRAC_GPU = 1
 
@@ -182,15 +185,20 @@ def main():
             print('style: %s, content:%s, tv: %s, affine: %s' % to_print)
         else:
             print('style: %s, content:%s, tv: %s' % to_print)
-        # if options.test:
-        #     assert options.test_dir != False
-        #     preds_path = '%s/%s_%s.png' % (options.test_dir,epoch,i)
-        #     if not options.slow:
-        #         ckpt_dir = os.path.dirname(options.checkpoint_dir)
-        #         evaluate.ffwd_to_img(options.test,preds_path,
-        #                              options.checkpoint_dir)
-        #     else:
-        #         save_img(preds_path, img)
+        if options.test:
+            assert options.test_dir != False
+            preds_path = '%s/%s_%s.png' % (options.test_dir,epoch,i)
+            if not options.slow:
+                # copy ckpt
+                src = os.path.join(options.checkpoint_dir, "fns.ckpt.data-00000-of-00001")
+                dst = os.path.join(options.checkpoint_dir, "fns.ckpt")
+                copyfile(src, dst)
+
+                ckpt_dir = os.path.dirname(options.checkpoint_dir)
+                evaluate.ffwd_to_img(options.test,preds_path,
+                                     options.checkpoint_dir)
+            else:
+                save_img(preds_path, img)
     ckpt_dir = options.checkpoint_dir
     end_time  = time.time()
     elapsed_time = end_time - start_time
