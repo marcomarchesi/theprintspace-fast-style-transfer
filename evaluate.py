@@ -21,7 +21,6 @@ BATCH_SIZE = 4
 DEVICE = '/cpu:0'
 soft_config = tf.ConfigProto(allow_soft_placement=True)
 soft_config.gpu_options.allow_growth = True
-sess = tf.Session(config=soft_config)
 
 
 def from_pipe(opts):
@@ -130,20 +129,6 @@ def from_pipe(opts):
         del pipe_in
         del pipe_out
 
-
-def affine_loss(output, M, weight):
-    loss_affine = 0.0
-    output_t = output / 255.
-    for Vc in tf.unstack(output_t, axis=-1):
-        Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
-        ravel_0 = tf.expand_dims(Vc_ravel, 0)
-        ravel_0 = tf.cast(ravel_0, tf.float32)
-        ravel_1 = tf.expand_dims(Vc_ravel, -1)
-        ravel_1 = tf.cast(ravel_1, tf.float32)
-        loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(M, ravel_1))
-
-    return loss_affine * weight
-
 # get img_shape
 def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4):
     assert len(paths_out) > 0
@@ -161,7 +146,7 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4):
     batch_size = min(len(paths_out), batch_size)
     curr_num = 0
 
-    with g.as_default(), g.device(device_t), sess:
+    with g.as_default(), g.device(device_t), tf.Session(config=soft_config) as sess:
         batch_shape = (batch_size,) + img_shape
         img_placeholder = tf.placeholder(tf.float32, shape=batch_shape,
                                          name='img_placeholder')

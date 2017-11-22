@@ -32,6 +32,12 @@ def list_files(in_path):
     for (dirpath, dirnames, filenames) in os.walk(in_path):
         files.extend(filenames)
         break
-
     return files
+
+def list_abs_files(in_path):
+    files = list_files(in_path)
+    abs_files = []
+    for filename in files:
+      abs_files.append(os.path.join(in_path, filename))
+    return abs_files
 

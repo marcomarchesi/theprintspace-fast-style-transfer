@@ -1,5 +1,5 @@
 #! /bin/bash
-python style.py --style '/Users/marcomarchesi/Desktop/fast-style-transfer/style/bailey_01.jpg' \
+python style.py --style-dir '/Users/marcomarchesi/Desktop/fast-style-transfer/style' \
     --checkpoint-dir '/Users/marcomarchesi/Desktop/fast-style-transfer/checkpoint' \
     --test '/Users/marcomarchesi/Desktop/fast-style-transfer/input/giraffe.jpg' \
     --test-dir '/Users/marcomarchesi/Desktop/fast-style-transfer/test/' \
@@ -8,4 +8,5 @@ python style.py --style '/Users/marcomarchesi/Desktop/fast-style-transfer/style/
     --batch-size 5 \
     --epochs 2 \
     --no-gpu \
+    --num-examples 10 \
     --affine 

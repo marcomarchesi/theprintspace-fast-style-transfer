@@ -3,8 +3,9 @@ import functools
 import vgg, pdb, time
 import tensorflow as tf, numpy as np, os
 import transform
-from utils import get_img
+from utils import get_img, list_abs_files
 import random
+from random import randint
 
 # add laplacian
 from closed_form_matting import getLaplacian, getLaplacianAsThree
@@ -12,7 +13,6 @@ from closed_form_matting import getLaplacian, getLaplacianAsThree
 STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
 CONTENT_LAYER = 'relu4_2'
 DEVICES = '/gpu:0'
-config = tf.ConfigProto(allow_soft_placement=True)
 
 laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
@@ -39,7 +39,7 @@ def get_affine_loss(output, batch_size, MM, weight):
     return tf.reduce_mean(loss_affine * weight)
 
 # np arr, np arr
-def optimize(content_targets, style_target, content_weight, style_weight,
+def optimize(content_targets, style_targets, content_weight, style_weight,
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
              learning_rate=1e-3, debug=False, no_gpu=False, affine=False, num_examples=1000):
@@ -50,7 +50,6 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
     if affine:
         batch_size = 1
-        print("is affine")
     
     if slow:
         batch_size = 1
@@ -61,8 +60,12 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
     style_features = {}
 
+    style_images = []
+    for style_target in list_abs_files(style_targets):
+        style_images.append(get_img(style_target))
+
     batch_shape = (batch_size,256,256,3)
-    style_shape = (1,) + style_target.shape
+    style_shape = (1,) + style_images[0].shape
 
     if no_gpu:
         DEVICES = '/cpu:0' 
@@ -73,13 +76,16 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         style_image = tf.placeholder(tf.float32, shape=style_shape, name='style_image')
         style_image_pre = vgg.preprocess(style_image)
         net = vgg.net(vgg_path, style_image_pre)
-        style_pre = np.array([style_target])
+        # style_pre = np.array([style_target])
+
         for layer in STYLE_LAYERS:
-            features = net[layer].eval(feed_dict={style_image:style_pre})
-            features = np.reshape(features, (-1, features.shape[3]))
-            gram = np.matmul(features.T, features) / features.size
+            features = net[layer]
+            features = tf.squeeze(features)
+            features = tf.reshape(features, (features.shape[0] * features.shape[1], features.shape[2]))
+            features_size = tf.to_float(features.shape[0] * features.shape[1])
+            gram = tf.matmul(features, features, adjoint_a=True) / features_size
             style_features[layer] = gram
-    with tf.Graph().as_default(), tf.device(DEVICES), tf.Session(config=config) as sess:
+
         X_content = tf.placeholder(tf.float32, shape=batch_shape, name="X_content")
         X_pre = vgg.preprocess(X_content)
 
@@ -123,7 +129,10 @@ def optimize(content_targets, style_target, content_weight, style_weight,
             feats_T = tf.transpose(feats, perm=[0,2,1])
             grams = tf.matmul(feats_T, feats) / size
             style_gram = style_features[style_layer]
-            style_losses.append(2 * tf.nn.l2_loss(grams - style_gram)/style_gram.size)
+            print(style_gram.shape)
+            # style_losses.append(2 * tf.nn.l2_loss(grams - style_gram)/style_gram.size)
+            style_losses.append(2 * tf.nn.l2_loss(grams - style_gram)/ tf.to_float(style_gram.shape[0] *\
+                style_gram.shape[1]))
 
         style_loss = style_weight * functools.reduce(tf.add, style_losses) / batch_size
 
@@ -135,10 +144,10 @@ def optimize(content_targets, style_target, content_weight, style_weight,
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
 
-        # if affine:
-        #     loss = content_loss + style_loss + tv_loss + affine_loss
-        # else:
-        loss = content_loss + style_loss + tv_loss
+        if affine:
+            loss = content_loss + style_loss + tv_loss + affine_loss
+        else:
+            loss = content_loss + style_loss + tv_loss
 
 
         # summaries for TensorBoard
@@ -183,6 +192,13 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                 start_time = time.time()
                 curr = iterations * batch_size
                 step = curr + batch_size
+
+                # style image to use
+                random_item = randint(0, len(style_images))
+                if random_item == len(style_images):
+                    random_item -= 1
+                print("style image no.%i" % random_item)
+                style_pre = np.expand_dims(np.array(style_images[random_item]), axis=0)
                 
                 for j, img_p in enumerate(content_targets[curr:step]):
                    print(img_p)
@@ -198,11 +214,13 @@ def optimize(content_targets, style_target, content_weight, style_weight,
 
                 if affine:
                     feed_dict = {
+                       style_image:style_pre,
                        X_content:X_batch,
                        X_MM: M
                     }
                 else:
                     feed_dict = {
+                       style_image:style_pre,
                        X_content:X_batch
                     }
 
@@ -220,12 +238,14 @@ def optimize(content_targets, style_target, content_weight, style_weight,
                     if affine:
                         to_get = [style_loss, content_loss, tv_loss, affine_loss, loss, preds]
                         test_feed_dict = {
+                           style_image:style_pre,
                            X_content:X_batch,
                            X_MM: M
                         }
                     else:
                         to_get = [style_loss, content_loss, tv_loss, loss, preds]
                         test_feed_dict = {
+                           style_image:style_pre,
                            X_content:X_batch
                         }
 
