@@ -188,18 +188,22 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
         for epoch in range(epochs):
             # num_examples = len(content_targets)
             iterations = 0
-            while iterations * batch_size < num_examples:
-                start_time = time.time()
-                curr = iterations * batch_size
-                step = curr + batch_size
 
-                # style image to use
+            # style image to use
+            if multiple_style_images: 
                 random_item = randint(0, len(style_images))
                 if random_item == len(style_images):
                     random_item -= 1
                 print("style image no.%i" % random_item)
                 style_pre = np.expand_dims(np.array(style_images[random_item]), axis=0)
+            else:
+                style_pre = np.expand_dims(np.array(style_images[0]), axis=0)
                 
+            while iterations * batch_size < num_examples:
+                start_time = time.time()
+                curr = iterations * batch_size
+                step = curr + batch_size
+
                 for j, img_p in enumerate(content_targets[curr:step]):
                    print(img_p)
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)

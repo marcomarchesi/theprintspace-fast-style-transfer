@@ -36,6 +36,10 @@ def build_parser():
                         dest='style_dir', help='style image path',
                         metavar='STYLE_DIR', required=True)
 
+    parser.add_argument('--multiple-style-images', dest='multiple_style_images', action='store_true', 
+                        help='using multiple style images', default=False)
+
+
     parser.add_argument('--train-path', type=str,
                         dest='train_path', help='path to training images folder',
                         metavar='TRAIN_PATH', default=TRAIN_PATH)
@@ -152,7 +156,8 @@ def main():
         "learning_rate":options.learning_rate,
         "num_examples": options.num_examples,
         "no_gpu":options.no_gpu,
-        "affine":options.affine
+        "affine":options.affine,
+        "multiple_style_images":options.multiple_style_images
     }
 
     if options.slow:
