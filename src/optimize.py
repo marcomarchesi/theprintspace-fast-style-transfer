@@ -89,9 +89,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
         X_content = tf.placeholder(tf.float32, shape=batch_shape, name="X_content")
         X_pre = vgg.preprocess(X_content)
 
-        # placeholder for M
-        if affine:
-            X_MM = tf.placeholder(tf.float32, name="X_MM")
+        # placeholder for M (affine)
+        X_MM = tf.placeholder(tf.float32, name="X_MM")
  
         # precompute content features
         content_features = {}
@@ -111,6 +110,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
 
 
         # affine loss
+        affine_loss = 0.0
         if affine:
             affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
 
@@ -129,7 +129,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
             feats_T = tf.transpose(feats, perm=[0,2,1])
             grams = tf.matmul(feats_T, feats) / size
             style_gram = style_features[style_layer]
-            print(style_gram.shape)
+
             # style_losses.append(2 * tf.nn.l2_loss(grams - style_gram)/style_gram.size)
             style_losses.append(2 * tf.nn.l2_loss(grams - style_gram)/ tf.to_float(style_gram.shape[0] *\
                 style_gram.shape[1]))
@@ -144,10 +144,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
 
-        if affine:
-            loss = content_loss + style_loss + tv_loss + affine_loss
-        else:
-            loss = content_loss + style_loss + tv_loss
+        # loss contributions
+        loss = content_loss + style_loss + tv_loss + affine_loss
 
 
         # summaries for TensorBoard
@@ -155,8 +153,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
             tf.summary.scalar('content_loss', content_loss)
             tf.summary.scalar('style_loss', style_loss)
             tf.summary.scalar('tv_loss', tv_loss)
-            if affine:
-                tf.summary.scalar('affine_loss', affine_loss)
+            tf.summary.scalar('affine_loss', affine_loss)
             tf.summary.scalar('total_loss', loss)
 
         merged = tf.summary.merge_all()
@@ -167,14 +164,14 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         sess.run(tf.global_variables_initializer())
 
-        if affine:
-            batch_laplacian_shape = (batch_size, 1623076)
-            M = np.zeros(batch_laplacian_shape, dtype=np.float32)
+        # affine
+        batch_laplacian_shape = (batch_size, 1623076)
+        M = np.zeros(batch_laplacian_shape, dtype=np.float32)
 
         # DOES THIS POSITION COULD AFFECT THE TRAINING?    
         X_batch = np.zeros(batch_shape, dtype=np.float32)
 
-        print("Number of examples: %i" % len(content_targets))
+        print("Number of examples: %i" % num_examples)
         print("Batch size: %i" % batch_size)
 
         global_step = 0
@@ -216,17 +213,11 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
 
-                if affine:
-                    feed_dict = {
-                       style_image:style_pre,
-                       X_content:X_batch,
-                       X_MM: M
-                    }
-                else:
-                    feed_dict = {
-                       style_image:style_pre,
-                       X_content:X_batch
-                    }
+                feed_dict = {
+                   style_image:style_pre,
+                   X_content:X_batch,
+                   X_MM: M
+                }
 
                 train_step.run(feed_dict=feed_dict)
                 end_time = time.time()
@@ -239,31 +230,21 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
                 is_last = epoch == epochs - 1 and iterations * batch_size >= num_examples
                 should_print = is_print_iter or is_last
                 if should_print:
-                    if affine:
-                        to_get = [style_loss, content_loss, tv_loss, affine_loss, loss, preds]
-                        test_feed_dict = {
-                           style_image:style_pre,
-                           X_content:X_batch,
-                           X_MM: M
-                        }
-                    else:
-                        to_get = [style_loss, content_loss, tv_loss, loss, preds]
-                        test_feed_dict = {
-                           style_image:style_pre,
-                           X_content:X_batch
-                        }
+                    to_get = [style_loss, content_loss, tv_loss, affine_loss, loss, preds]
+                    test_feed_dict = {
+                       style_image:style_pre,
+                       X_content:X_batch,
+                       X_MM: M
+                    }
 
 
                     global_step = (epoch + 1) * iterations
                     # print("Global Step: %i" % global_step)
                     summary, tup = sess.run([merged, to_get], feed_dict = test_feed_dict)
                     summary_writer.add_summary(summary, global_step)
-                    if affine:
-                        _style_loss,_content_loss,_tv_loss, _affine_loss, _loss,_preds = tup
-                        losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _loss)
-                    else:
-                        _style_loss,_content_loss,_tv_loss, _loss,_preds = tup
-                        losses = (_style_loss, _content_loss, _tv_loss, _loss)
+
+                    _style_loss,_content_loss,_tv_loss, _affine_loss, _loss,_preds = tup
+                    losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _loss)
 
                     if slow:
                        _preds = vgg.unprocess(_preds)
