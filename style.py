@@ -178,18 +178,12 @@ def main():
 
 
     for preds, losses, i, epoch in optimize(*args, **kwargs):
-        if options.affine:
-            style_loss, content_loss, tv_loss, affine_loss, loss = losses
-            to_print = (style_loss, content_loss, tv_loss, affine_loss)
-        else:
-            style_loss, content_loss, tv_loss, loss = losses
-            to_print = (style_loss, content_loss, tv_loss)
+        style_loss, content_loss, tv_loss, affine_loss, loss = losses
+        to_print = (style_loss, content_loss, tv_loss, affine_loss)
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
-        if options.affine:
-            print('style: %s, content:%s, tv: %s, affine: %s' % to_print)
-        else:
-            print('style: %s, content:%s, tv: %s' % to_print)
+        print('style: %s, content:%s, tv: %s, affine: %s' % to_print)
+
         if options.test:
             assert options.test_dir != False
             preds_path = '%s/%s_%s.png' % (options.test_dir,epoch,i)

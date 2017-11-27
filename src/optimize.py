@@ -110,7 +110,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
 
 
         # affine loss
-        affine_loss = 0.0
+        affine_loss = tf.constant(0.0)
         if affine:
             affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
 
@@ -183,7 +183,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
 
 
         for epoch in range(epochs):
-            # num_examples = len(content_targets)
+            num_examples = len(content_targets)
             iterations = 0
 
             # style image to use
@@ -250,7 +250,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
                        _preds = vgg.unprocess(_preds)
                     else:
                         if affine:
-                            res = saver.save(sess, save_path)
+                            #res = saver.save(sess, save_path)
+                            print("saving")
                         else:
                             saver = tf.train.Saver()
                             res = saver.save(sess, save_path)
