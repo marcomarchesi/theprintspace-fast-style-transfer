@@ -48,8 +48,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
     DEVICES = '/gpu:0'
     config = tf.ConfigProto(allow_soft_placement=True)
 
-    if affine:
-        batch_size = 1
+    # if affine:
+    #     batch_size = 1
     
     if slow:
         batch_size = 1
@@ -176,10 +176,13 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
 
         global_step = 0
 
-        if affine:
-            saver = tf.train.Saver()
-            saver.restore(sess, save_path)
-            #print("checkpoint restored")
+        content_image = get_img("./giraffe.jpg", (256,256,3)).astype(np.float32)
+        _, values, __ = getLaplacianAsThree(content_image / 255.)
+
+        # if affine:
+        #     saver = tf.train.Saver()
+        #     saver.restore(sess, save_path)
+        #     #print("checkpoint restored")
 
 
         for epoch in range(epochs):
@@ -206,9 +209,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
                    # key = os.path.split(img_p)[1]
                    # values = laplacian_values[()][key]
-                   if affine:
-                    _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
-                    M[j] = values
+                   # if affine:
+                   #  _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
+                   M[j] = values
                    
                 iterations += 1
                 assert X_batch.shape[0] == batch_size

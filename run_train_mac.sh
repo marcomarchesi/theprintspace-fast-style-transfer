@@ -4,7 +4,9 @@ python style.py --style-dir '/Users/marcomarchesi/Desktop/fast-style-transfer/st
     --test '/Users/marcomarchesi/Desktop/fast-style-transfer/input/giraffe.jpg' \
     --test-dir '/Users/marcomarchesi/Desktop/fast-style-transfer/test/' \
     --content-weight 1.5e1 \
-    --checkpoint-iterations 100 \
+    --checkpoint-iterations 2 \
     --batch-size 20 \
-    --epochs 2 \
-    --no-gpu 
+    --epochs 1 \
+    --no-gpu \
+    --affine    \
+    --num-examples 40

@@ -22,7 +22,7 @@ NUM_EXAMPLES = 1000
 CHECKPOINT_DIR = 'checkpoints'
 CHECKPOINT_ITERATIONS = 2000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
-TRAIN_PATH = 'data/trainAffine'
+TRAIN_PATH = 'data/train2014'
 BATCH_SIZE = 1
 FRAC_GPU = 1
 
