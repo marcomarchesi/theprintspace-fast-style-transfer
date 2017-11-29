@@ -7,6 +7,4 @@ python style.py --style-dir '/Users/marcomarchesi/Desktop/fast-style-transfer/st
     --checkpoint-iterations 2 \
     --batch-size 20 \
     --epochs 1 \
-    --no-gpu \
-    --affine    \
-    --num-examples 40
+    --no-gpu

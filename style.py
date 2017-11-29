@@ -178,8 +178,8 @@ def main():
 
 
     for preds, losses, i, epoch in optimize(*args, **kwargs):
-        style_loss, content_loss, tv_loss, affine_loss, loss = losses
-        to_print = (style_loss, content_loss, tv_loss, affine_loss)
+        style_loss, content_loss, tv_loss, affine_loss, contrast_loss, loss = losses
+        to_print = (style_loss, content_loss, tv_loss, affine_loss, contrast_loss)
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
         print('style: %s, content:%s, tv: %s, affine: %s' % to_print)

@@ -5,6 +5,7 @@ import tensorflow as tf, numpy as np, os
 import transform
 from utils import get_img, list_abs_files
 import random
+from scipy import ndimage
 from random import randint
 
 # add laplacian
@@ -21,6 +22,21 @@ laplacian_indices = np.load('./laplacian_data/indices.npy')
 # for debug mode
 uid = random.randint(1, 100)
 # print("UID: %s" % uid)
+
+def sobel(img_array):
+    '''
+    image: image to convert with Sobel filter
+    '''
+    col = np.zeros((img_array.shape))
+
+    for i in range(img_array.shape[0]):
+        img = img_array[i]
+        dx = ndimage.sobel(img, 0)  # horizontal derivative
+        dy = ndimage.sobel(img, 1)  # vertical derivative
+        mag = np.hypot(dx, dy)  # magnitude, equivalent to sqrt(dx**2 + dy**2)
+        mag *= 255.0 / np.max(mag)  # normalize (Q&D)
+
+    return col
 
 
 def get_affine_loss(output, batch_size, MM, weight):
@@ -89,6 +105,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
         X_content = tf.placeholder(tf.float32, shape=batch_shape, name="X_content")
         X_pre = vgg.preprocess(X_content)
 
+        X_contrast = sobel(X_content)
+        X_pre_contrast = vgg.preprocess(X_contrast)
+
         # placeholder for M (affine)
         X_MM = tf.placeholder(tf.float32, name="X_MM")
  
@@ -96,6 +115,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
         content_features = {}
         content_net = vgg.net(vgg_path, X_pre)
         content_features[CONTENT_LAYER] = content_net[CONTENT_LAYER]
+
+        contrast_features = {}
+        contrast_net = vgg.net(vgg_path, X_pre_contrast)
+        contrast_features[CONTENT_LAYER] = contrast_net[CONTENT_LAYER]
 
         if slow:
             preds = tf.Variable(
@@ -117,8 +140,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
         assert _tensor_size(content_features[CONTENT_LAYER]) == _tensor_size(net[CONTENT_LAYER])
         content_loss = content_weight * (2 * tf.nn.l2_loss(
-            net[CONTENT_LAYER] - content_features[CONTENT_LAYER]) / content_size
-        )
+            net[CONTENT_LAYER] - content_features[CONTENT_LAYER]) / content_size)
+
+        contrast_loss = content_weight * (2 * tf.nn.l2_loss(
+            net[CONTENT_LAYER] - contrast_features[CONTENT_LAYER]) / content_size)
 
         style_losses = []
         for style_layer in STYLE_LAYERS:
@@ -145,7 +170,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
 
 
         # loss contributions
-        loss = content_loss + style_loss + tv_loss + affine_loss
+        loss = content_loss + style_loss + tv_loss + affine_loss + contrast_loss
 
 
         # summaries for TensorBoard
@@ -233,7 +258,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
                 is_last = epoch == epochs - 1 and iterations * batch_size >= num_examples
                 should_print = is_print_iter or is_last
                 if should_print:
-                    to_get = [style_loss, content_loss, tv_loss, affine_loss, loss, preds]
+                    to_get = [style_loss, content_loss, tv_loss, affine_loss, contrast_loss, loss, preds]
                     test_feed_dict = {
                        style_image:style_pre,
                        X_content:X_batch,
@@ -246,8 +271,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
                     summary, tup = sess.run([merged, to_get], feed_dict = test_feed_dict)
                     summary_writer.add_summary(summary, global_step)
 
-                    _style_loss,_content_loss,_tv_loss, _affine_loss, _loss,_preds = tup
-                    losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _loss)
+                    _style_loss,_content_loss,_tv_loss, _affine_loss, _contrast_loss, _loss,_preds = tup
+                    losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _contrast_loss, _loss)
 
                     if slow:
                        _preds = vgg.unprocess(_preds)
