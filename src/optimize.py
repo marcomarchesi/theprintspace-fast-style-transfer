@@ -30,11 +30,13 @@ def sobel(img_array):
     col = np.zeros((img_array.shape))
 
     for i in range(img_array.shape[0]):
+        # print(i)
         img = img_array[i]
         dx = ndimage.sobel(img, 0)  # horizontal derivative
         dy = ndimage.sobel(img, 1)  # vertical derivative
         mag = np.hypot(dx, dy)  # magnitude, equivalent to sqrt(dx**2 + dy**2)
         mag *= 255.0 / np.max(mag)  # normalize (Q&D)
+        col[i] = mag
 
     return col
 
@@ -105,7 +107,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
         X_content = tf.placeholder(tf.float32, shape=batch_shape, name="X_content")
         X_pre = vgg.preprocess(X_content)
 
-        X_contrast = sobel(X_content)
+        X_contrast = tf.placeholder(tf.float32, shape=batch_shape, name="X_contrast")
         X_pre_contrast = vgg.preprocess(X_contrast)
 
         # placeholder for M (affine)
@@ -179,6 +181,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
             tf.summary.scalar('style_loss', style_loss)
             tf.summary.scalar('tv_loss', tv_loss)
             tf.summary.scalar('affine_loss', affine_loss)
+            tf.summart.scalar('contrast_loss', contrast_loss)
             tf.summary.scalar('total_loss', loss)
 
         merged = tf.summary.merge_all()
@@ -244,6 +247,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
                 feed_dict = {
                    style_image:style_pre,
                    X_content:X_batch,
+                   X_contrast: sobel(X_batch),
                    X_MM: M
                 }
 
@@ -262,6 +266,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
                     test_feed_dict = {
                        style_image:style_pre,
                        X_content:X_batch,
+                       X_contrast:sobel(X_batch),
                        X_MM: M
                     }
 

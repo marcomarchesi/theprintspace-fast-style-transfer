@@ -182,7 +182,7 @@ def main():
         to_print = (style_loss, content_loss, tv_loss, affine_loss, contrast_loss)
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
-        print('style: %s, content:%s, tv: %s, affine: %s' % to_print)
+        print('style: %s, content:%s, tv: %s, affine: %s, contrast: %s' % to_print)
 
         if options.test:
             assert options.test_dir != False
