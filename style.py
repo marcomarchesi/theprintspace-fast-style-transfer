@@ -12,6 +12,7 @@ import time
 from shutil import copyfile
 
 CONTENT_WEIGHT = 7.5e0
+CONTRAST_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
 AFFINE_WEIGHT = 1e4
@@ -79,6 +80,11 @@ def build_parser():
                         dest='content_weight',
                         help='content weight (default %(default)s)',
                         metavar='CONTENT_WEIGHT', default=CONTENT_WEIGHT)
+
+    parser.add_argument('--contrast-weight', type=float,
+                        dest='contrast_weight',
+                        help='contrast weight (default %(default)s)',
+                        metavar='CONTRAST_WEIGHT', default=CONTRAST_WEIGHT)
     
     parser.add_argument('--style-weight', type=float,
                         dest='style_weight',
@@ -126,6 +132,7 @@ def check_opts(opts):
     assert os.path.exists(opts.vgg_path)
     assert opts.content_weight >= 0
     assert opts.style_weight >= 0
+    assert opts.contrast_weight >= 0
     assert opts.tv_weight >= 0
     assert opts.learning_rate >= 0
     assert opts.num_examples >= 0
@@ -171,6 +178,7 @@ def main():
         style_targets,
         options.content_weight,
         options.style_weight,
+        options.contrast_weight,
         options.tv_weight,
         options.affine_weight,
         options.vgg_path

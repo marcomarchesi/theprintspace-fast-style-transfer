@@ -57,7 +57,7 @@ def get_affine_loss(output, batch_size, MM, weight):
     return tf.reduce_mean(loss_affine * weight)
 
 # np arr, np arr
-def optimize(content_targets, style_targets, content_weight, style_weight,
+def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight,
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
              learning_rate=1e-3, debug=False, no_gpu=False, affine=False, multiple_style_images=False, num_examples=1000):
@@ -144,7 +144,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
         content_loss = content_weight * (2 * tf.nn.l2_loss(
             net[CONTENT_LAYER] - content_features[CONTENT_LAYER]) / content_size)
 
-        contrast_loss = content_weight * (2 * tf.nn.l2_loss(
+        contrast_loss = contrast_weight * (2 * tf.nn.l2_loss(
             net[CONTENT_LAYER] - contrast_features[CONTENT_LAYER]) / content_size)
 
         style_losses = []
@@ -181,7 +181,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
             tf.summary.scalar('style_loss', style_loss)
             tf.summary.scalar('tv_loss', tv_loss)
             tf.summary.scalar('affine_loss', affine_loss)
-            tf.summart.scalar('contrast_loss', contrast_loss)
+            tf.summary.scalar('contrast_loss', contrast_loss)
             tf.summary.scalar('total_loss', loss)
 
         merged = tf.summary.merge_all()
@@ -204,13 +204,13 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
 
         global_step = 0
 
-        content_image = get_img("./giraffe.jpg", (256,256,3)).astype(np.float32)
-        _, values, __ = getLaplacianAsThree(content_image / 255.)
+        # content_image = get_img("./giraffe.jpg", (256,256,3)).astype(np.float32)
+        # _, values, __ = getLaplacianAsThree(content_image / 255.)
 
-        # if affine:
-        #     saver = tf.train.Saver()
-        #     saver.restore(sess, save_path)
-        #     #print("checkpoint restored")
+        #if affine:
+             #saver = tf.train.Saver()
+             #saver.restore(sess, save_path)
+             #print("checkpoint restored")
 
 
         for epoch in range(epochs):
@@ -234,6 +234,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
 
                 for j, img_p in enumerate(content_targets[curr:step]):
                    print(img_p)
+                   if affine:
+                    if j == 0:
+                        _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
                    # key = os.path.split(img_p)[1]
                    # values = laplacian_values[()][key]
@@ -282,12 +285,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight,
                     if slow:
                        _preds = vgg.unprocess(_preds)
                     else:
-                        if affine:
-                            #res = saver.save(sess, save_path)
-                            print("saving")
-                        else:
-                            saver = tf.train.Saver()
-                            res = saver.save(sess, save_path)
+                        saver = tf.train.Saver()
+                        res = saver.save(sess, save_path)
                     yield(_preds, losses, iterations, epoch)
 
             # check GraphDef size
