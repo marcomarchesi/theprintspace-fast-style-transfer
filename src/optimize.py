@@ -40,6 +40,24 @@ def sobel(img_array):
 
     return col
 
+def get_gradient_loss(img_array):
+    '''
+    calculate gradient of batch style_images
+    '''
+    col = np.zeros((img_array.shape))
+    for i in range(img_array.shape[0]):
+        print(i)
+        img = img_array[i]
+        mean = np.mean(img)
+        img = img - mean
+        mag = np.zeros((img_array.shape[1], img_array.shape[2], img_array.shape[3]))
+        for j in range(3):
+            gx, gy = np.gradient(img[:,:,j])
+            mag[:,:,j] = np.hypot(gx, gy) / 3
+            print(mag.shape)
+        col[i] = mag
+    return col
+
 
 def get_affine_loss(output, batch_size, MM, weight):
     loss_affine = 0.0
@@ -57,7 +75,7 @@ def get_affine_loss(output, batch_size, MM, weight):
     return tf.reduce_mean(loss_affine * weight)
 
 # np arr, np arr
-def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight,
+def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight, gradient_weight,
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
              learning_rate=1e-3, debug=False, no_gpu=False, affine=False, multiple_style_images=False, num_examples=1000):
@@ -110,6 +128,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         X_contrast = tf.placeholder(tf.float32, shape=batch_shape, name="X_contrast")
         X_pre_contrast = vgg.preprocess(X_contrast)
 
+        X_gradient = tf.placeholder(tf.float32, shape=batch_shape, name="X_gradient")
+        X_pre_gradient = vgg.preprocess(X_gradient)
+
         # placeholder for M (affine)
         X_MM = tf.placeholder(tf.float32, name="X_MM")
  
@@ -122,6 +143,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         contrast_net = vgg.net(vgg_path, X_pre_contrast)
         contrast_features[CONTENT_LAYER] = contrast_net[CONTENT_LAYER]
 
+        gradient_features = {}
+        gradient_net = vgg.net(vgg_path, X_pre_gradient)
+        gradient_features[CONTENT_LAYER] = gradient_net[CONTENT_LAYER]
+
         if slow:
             preds = tf.Variable(
                 tf.random_normal(X_content.get_shape()) * 0.256
@@ -132,7 +157,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
             preds_pre = vgg.preprocess(preds)
 
         net = vgg.net(vgg_path, preds_pre)
-
 
         # affine loss
         affine_loss = tf.constant(0.0)
@@ -146,6 +170,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
         contrast_loss = contrast_weight * (2 * tf.nn.l2_loss(
             net[CONTENT_LAYER] - contrast_features[CONTENT_LAYER]) / content_size)
+
+        gradient_loss = gradient_weight * (2 * tf.nn.l2_loss(
+            net[CONTENT_LAYER] - gradient_features[CONTENT_LAYER]) / content_size)
 
         style_losses = []
         for style_layer in STYLE_LAYERS:
@@ -172,7 +199,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
 
         # loss contributions
-        loss = content_loss + style_loss + tv_loss + affine_loss + contrast_loss
+        loss = content_loss + style_loss + tv_loss + affine_loss + contrast_loss + gradient_loss
 
 
         # summaries for TensorBoard
@@ -182,6 +209,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
             tf.summary.scalar('tv_loss', tv_loss)
             tf.summary.scalar('affine_loss', affine_loss)
             tf.summary.scalar('contrast_loss', contrast_loss)
+            tf.summary.scalar('gradient_loss', gradient_loss)
             tf.summary.scalar('total_loss', loss)
 
         merged = tf.summary.merge_all()
@@ -212,7 +240,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # saver.restore(sess, save_path)
         # print("checkpoint restored")
 
-
         for epoch in range(epochs):
             num_examples = len(content_targets)
             iterations = 0
@@ -237,12 +264,13 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                    if affine:
                     if j == 0:
                         _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
+                        M[j] = values
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
                    # key = os.path.split(img_p)[1]
                    # values = laplacian_values[()][key]
                    # if affine:
                    #  _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
-                   M[j] = values
+                   
                    
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
@@ -251,6 +279,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                    style_image:style_pre,
                    X_content:X_batch,
                    X_contrast: sobel(X_batch),
+                   X_gradient: get_gradient_loss(X_batch),
                    X_MM: M
                 }
 
@@ -265,11 +294,12 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 is_last = epoch == epochs - 1 and iterations * batch_size >= num_examples
                 should_print = is_print_iter or is_last
                 if should_print:
-                    to_get = [style_loss, content_loss, tv_loss, affine_loss, contrast_loss, loss, preds]
+                    to_get = [style_loss, content_loss, tv_loss, affine_loss, contrast_loss, gradient_loss, loss, preds]
                     test_feed_dict = {
                        style_image:style_pre,
                        X_content:X_batch,
-                       X_contrast:sobel(X_batch),
+                       X_contrast: sobel(X_batch),
+                       X_gradient: get_gradient_loss(X_batch),
                        X_MM: M
                     }
 
@@ -279,8 +309,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     summary, tup = sess.run([merged, to_get], feed_dict = test_feed_dict)
                     summary_writer.add_summary(summary, global_step)
 
-                    _style_loss,_content_loss,_tv_loss, _affine_loss, _contrast_loss, _loss,_preds = tup
-                    losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _contrast_loss, _loss)
+                    _style_loss,_content_loss,_tv_loss, _affine_loss, _contrast_loss, _gradient_loss, _loss,_preds = tup
+                    losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _contrast_loss, _gradient_loss, _loss)
 
                     if slow:
                        _preds = vgg.unprocess(_preds)

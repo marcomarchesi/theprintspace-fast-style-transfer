@@ -16,6 +16,7 @@ CONTRAST_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
 AFFINE_WEIGHT = 1e4
+GRADIENT_WEIGHT = 7.5e0
 
 LEARNING_RATE = 1e-3
 NUM_EPOCHS = 2
@@ -85,6 +86,11 @@ def build_parser():
                         dest='contrast_weight',
                         help='contrast weight (default %(default)s)',
                         metavar='CONTRAST_WEIGHT', default=CONTRAST_WEIGHT)
+
+    parser.add_argument('--gradient-weight', type=float,
+                        dest='gradient_weight',
+                        help='gradient weight (default %(default)s)',
+                        metavar='GRADIENT_WEIGHT', default=GRADIENT_WEIGHT)
     
     parser.add_argument('--style-weight', type=float,
                         dest='style_weight',
@@ -133,6 +139,7 @@ def check_opts(opts):
     assert opts.content_weight >= 0
     assert opts.style_weight >= 0
     assert opts.contrast_weight >= 0
+    assert opts.gradient_weight >= 0
     assert opts.tv_weight >= 0
     assert opts.learning_rate >= 0
     assert opts.num_examples >= 0
@@ -179,6 +186,7 @@ def main():
         options.content_weight,
         options.style_weight,
         options.contrast_weight,
+        options.gradient_weight,
         options.tv_weight,
         options.affine_weight,
         options.vgg_path
@@ -186,11 +194,11 @@ def main():
 
 
     for preds, losses, i, epoch in optimize(*args, **kwargs):
-        style_loss, content_loss, tv_loss, affine_loss, contrast_loss, loss = losses
-        to_print = (style_loss, content_loss, tv_loss, affine_loss, contrast_loss)
+        style_loss, content_loss, tv_loss, affine_loss, contrast_loss, gradient_loss, loss = losses
+        to_print = (style_loss, content_loss, tv_loss, affine_loss, contrast_loss, gradient_loss)
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
-        print('style: %s, content:%s, tv: %s, affine: %s, contrast: %s' % to_print)
+        print('style: %s, content:%s, tv: %s, affine: %s, contrast: %s, gradient: %s' % to_print)
 
         if options.test:
             assert options.test_dir != False
