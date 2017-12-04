@@ -208,9 +208,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # _, values, __ = getLaplacianAsThree(content_image / 255.)
 
         #if affine:
-             #saver = tf.train.Saver()
-             #saver.restore(sess, save_path)
-             #print("checkpoint restored")
+        # saver = tf.train.Saver()
+        # saver.restore(sess, save_path)
+        # print("checkpoint restored")
 
 
         for epoch in range(epochs):
