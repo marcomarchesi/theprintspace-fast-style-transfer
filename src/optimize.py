@@ -41,7 +41,6 @@ def sobel(img_array):
     return col
 
 def grad_image_loss(content, image, weight):
-    # get_gradient(content)
     # get_gradient(image)
     return tf.reduce_mean(tf.squared_difference(content, image)) * weight
 
@@ -49,18 +48,17 @@ def get_gradient(img_array):
     '''
     calculate gradient of batch style_images
     '''
-    col = np.zeros((img_array.shape))
-    for i in range(img_array.shape[0]):
-        print(i)
-        img = img_array[i]
-        img = img
-        mag = np.zeros((img_array.shape[1], img_array.shape[2], img_array.shape[3]))
-        for j in range(3):
-            gx, gy = np.gradient(img[:,:,j])
-            mag[:,:,j] = np.hypot(gx, gy) / 3
-        col[i] = mag
-    print(col.shape)
-    return col
+    # col = np.zeros((img_array.shape))
+    # for i in range(img_array.shape[0]):
+    #     img = img_array[i]
+    #     mag = np.zeros((img_array.shape[1], img_array.shape[2], img_array.shape[3]))
+    #     for j in range(3):
+    #         print(img[:,:,j])
+    #         gx, gy = np.gradient(img[:,:,j])
+    #         mag[:,:,j] = np.hypot(gx, gy) / 3
+    #     col[i] = mag
+    # return col
+    return tf.image.total_variation(img_array)
 
 
 def get_affine_loss(output, batch_size, MM, weight):
@@ -206,10 +204,12 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # DOES THIS POSITION COULD AFFECT THE TRAINING?    
         X_batch = np.zeros(batch_shape, dtype=np.float32)
 
+        
+
 
 
         # gradient loss
-        gradient_loss = grad_image_loss(X_batch, preds, gradient_weight)
+        gradient_loss = grad_image_loss(X_content, preds, gradient_weight)
 
 
         # loss contributions
@@ -230,13 +230,16 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         summary_writer = tf.summary.FileWriter('./logs',
                                       sess.graph)
 
+
+
         # overall loss
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         
 
-
-
+        # initialize variables
         sess.run(tf.global_variables_initializer())
+
+        
 
         print("Number of examples: %i" % num_examples)
         print("Batch size: %i" % batch_size)
