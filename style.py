@@ -200,11 +200,11 @@ def main():
 
 
     for preds, losses, i, epoch in optimize(*args, **kwargs):
-        style_loss, content_loss, tv_loss, affine_loss, contrast_loss, gradient_loss, loss = losses
-        to_print = (style_loss, content_loss, tv_loss, affine_loss, contrast_loss, gradient_loss)
+        style_loss, content_loss, tv_loss, contrast_loss, gradient_loss, loss = losses
+        to_print = (style_loss, content_loss, tv_loss, contrast_loss, gradient_loss)
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
-        print('style: %s, content:%s, tv: %s, affine: %s, contrast: %s, gradient: %s' % to_print)
+        print('style: %s, content:%s, tv: %s, contrast: %s, gradient: %s' % to_print)
 
         if options.test:
             assert options.test_dir != False

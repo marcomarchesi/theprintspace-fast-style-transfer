@@ -204,7 +204,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
 
         # loss contributions
-        loss = content_loss + style_loss + tv_loss + affine_loss + contrast_loss + gradient_loss
+        loss = content_loss + style_loss + tv_loss + contrast_loss + gradient_loss
 
 
         if logs:
@@ -286,8 +286,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 feed_dict = {
                    style_image:style_pre,
                    X_content:X_batch,
-                   X_contrast: sobel(X_batch),
-                   X_MM: M
+                   X_contrast: sobel(X_batch)
                 }
 
                 train_step.run(feed_dict=feed_dict)
@@ -301,12 +300,11 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 is_last = epoch == epochs - 1 and iterations * batch_size >= num_examples
                 should_print = is_print_iter or is_last
                 if should_print:
-                    to_get = [style_loss, content_loss, tv_loss, affine_loss, contrast_loss, gradient_loss, loss, preds]
+                    to_get = [style_loss, content_loss, tv_loss, contrast_loss, gradient_loss, loss, preds]
                     test_feed_dict = {
                        style_image:style_pre,
                        X_content:X_batch,
-                       X_contrast: sobel(X_batch),
-                       X_MM: M
+                       X_contrast: sobel(X_batch)
                     }
 
 
@@ -318,8 +316,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     else:
                         tup = sess.run(to_get, feed_dict = test_feed_dict)
 
-                    _style_loss,_content_loss,_tv_loss, _affine_loss, _contrast_loss, _gradient_loss, _loss,_preds = tup
-                    losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _contrast_loss, _gradient_loss, _loss)
+                    _style_loss,_content_loss,_tv_loss, _contrast_loss, _gradient_loss, _loss,_preds = tup
+                    losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _gradient_loss, _loss)
 
                     if slow:
                        _preds = vgg.unprocess(_preds)
