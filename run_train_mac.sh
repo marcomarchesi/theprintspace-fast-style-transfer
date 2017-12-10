@@ -7,4 +7,5 @@ python style.py --style-dir '/Users/marcomarchesi/Desktop/theprintspace-fast-sty
     --checkpoint-iterations 1 \
     --batch-size 2 \
     --epochs 1 \
-    --no-gpu
+    --no-gpu \
+    --gradient

@@ -42,7 +42,8 @@ def sobel(img_array):
 
 def grad_image_loss(content, image, weight):
     # get_gradient(image)
-    return tf.reduce_mean(tf.squared_difference(content, image)) * weight
+    # return tf.reduce_mean(tf.squared_difference(content, image)) * weight
+    return tf.reduce_mean(tf.squared_difference(tf.image.total_variation(content), tf.image.total_variation(image))) * weight
 
 def get_gradient(img_array):
     '''
