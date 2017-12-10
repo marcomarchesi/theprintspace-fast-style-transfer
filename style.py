@@ -47,6 +47,7 @@ def build_parser():
                         metavar='TRAIN_PATH', default=TRAIN_PATH)
 
     parser.add_argument('--no-gpu', dest='no_gpu', action='store_true', help='not using GPU', default=False)
+    parser.add_argument('--logs', dest='logs', action='store_true', help='whether using Tensorboard', default=False)
 
     parser.add_argument('--test', type=str,
                         dest='test', help='test image path',
@@ -91,6 +92,9 @@ def build_parser():
                         dest='gradient_weight',
                         help='gradient weight (default %(default)s)',
                         metavar='GRADIENT_WEIGHT', default=GRADIENT_WEIGHT)
+
+    parser.add_argument('--gradient', dest='gradient', action='store_true',
+                        help='gradient loss enabled', default=False)
     
     parser.add_argument('--style-weight', type=float,
                         dest='style_weight',
@@ -170,7 +174,9 @@ def main():
         "learning_rate":options.learning_rate,
         "num_examples": options.num_examples,
         "no_gpu":options.no_gpu,
+        "logs":options.logs,
         "affine":options.affine,
+        "gradient":options.gradient,
         "multiple_style_images":options.multiple_style_images
     }
 

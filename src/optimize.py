@@ -48,16 +48,6 @@ def get_gradient(img_array):
     '''
     calculate gradient of batch style_images
     '''
-    # col = np.zeros((img_array.shape))
-    # for i in range(img_array.shape[0]):
-    #     img = img_array[i]
-    #     mag = np.zeros((img_array.shape[1], img_array.shape[2], img_array.shape[3]))
-    #     for j in range(3):
-    #         print(img[:,:,j])
-    #         gx, gy = np.gradient(img[:,:,j])
-    #         mag[:,:,j] = np.hypot(gx, gy) / 3
-    #     col[i] = mag
-    # return col
     return tf.image.total_variation(img_array)
 
 
@@ -80,7 +70,8 @@ def get_affine_loss(output, batch_size, MM, weight):
 def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight, gradient_weight,
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
-             learning_rate=1e-3, debug=False, no_gpu=False, affine=False, multiple_style_images=False, num_examples=1000):
+             learning_rate=1e-3, debug=False, no_gpu=False, logs=False, affine=False, gradient=False, 
+             multiple_style_images=False, num_examples=1000):
 
 
     DEVICES = '/gpu:0'
@@ -216,19 +207,22 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         loss = content_loss + style_loss + tv_loss + affine_loss + contrast_loss + gradient_loss
 
 
-        # summaries for TensorBoard
-        with tf.name_scope('loss_summaries'):
-            tf.summary.scalar('content_loss', content_loss)
-            tf.summary.scalar('style_loss', style_loss)
-            tf.summary.scalar('tv_loss', tv_loss)
-            tf.summary.scalar('affine_loss', affine_loss)
-            tf.summary.scalar('contrast_loss', contrast_loss)
-            tf.summary.scalar('gradient_loss', gradient_loss)
-            tf.summary.scalar('total_loss', loss)
+        if logs:
+            # summaries for TensorBoard
+            with tf.name_scope('loss_summaries'):
+                tf.summary.scalar('content_loss', content_loss)
+                tf.summary.scalar('style_loss', style_loss)
+                tf.summary.scalar('tv_loss', tv_loss)
+                if affine:
+                    tf.summary.scalar('affine_loss', affine_loss)
+                tf.summary.scalar('contrast_loss', contrast_loss)
+                if gradient:
+                    tf.summary.scalar('gradient_loss', gradient_loss)
+                tf.summary.scalar('total_loss', loss)
 
-        merged = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter('./logs',
-                                      sess.graph)
+            merged = tf.summary.merge_all()
+            summary_writer = tf.summary.FileWriter('./logs',
+                                          sess.graph)
 
 
 
@@ -318,8 +312,11 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
                     global_step = (epoch + 1) * iterations
                     # print("Global Step: %i" % global_step)
-                    summary, tup = sess.run([merged, to_get], feed_dict = test_feed_dict)
-                    summary_writer.add_summary(summary, global_step)
+                    if logs:
+                        summary, tup = sess.run([merged, to_get], feed_dict = test_feed_dict)
+                        summary_writer.add_summary(summary, global_step)
+                    else:
+                        tup = sess.run(to_get, feed_dict = test_feed_dict)
 
                     _style_loss,_content_loss,_tv_loss, _affine_loss, _contrast_loss, _gradient_loss, _loss,_preds = tup
                     losses = (_style_loss, _content_loss, _tv_loss, _affine_loss, _contrast_loss, _gradient_loss, _loss)
