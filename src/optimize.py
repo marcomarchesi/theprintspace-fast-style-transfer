@@ -121,11 +121,11 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         X_contrast = tf.placeholder(tf.float32, shape=batch_shape, name="X_contrast")
         X_pre_contrast = vgg.preprocess(X_contrast)
 
-        X_gradient = tf.placeholder(tf.float32, shape=batch_shape, name="X_gradient")
-        X_pre_gradient = vgg.preprocess(X_gradient)
+        # X_gradient = tf.placeholder(tf.float32, shape=batch_shape, name="X_gradient")
+        # X_pre_gradient = vgg.preprocess(X_gradient)
 
         # placeholder for M (affine)
-        X_MM = tf.placeholder(tf.float32, name="X_MM")
+        # X_MM = tf.placeholder(tf.float32, name="X_MM")
  
         # precompute content features
         content_features = {}
@@ -136,9 +136,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         contrast_net = vgg.net(vgg_path, X_pre_contrast)
         contrast_features[CONTENT_LAYER] = contrast_net[CONTENT_LAYER]
 
-        gradient_features = {}
-        gradient_net = vgg.net(vgg_path, X_pre_gradient)
-        gradient_features[CONTENT_LAYER] = gradient_net[CONTENT_LAYER]
+        # gradient_features = {}
+        # gradient_net = vgg.net(vgg_path, X_pre_gradient)
+        # gradient_features[CONTENT_LAYER] = gradient_net[CONTENT_LAYER]
 
         if slow:
             preds = tf.Variable(
@@ -190,21 +190,20 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
 
         # affine
-        batch_laplacian_shape = (batch_size, 1623076)
-        M = np.zeros(batch_laplacian_shape, dtype=np.float32)
-        # DOES THIS POSITION COULD AFFECT THE TRAINING?    
+        # batch_laplacian_shape = (batch_size, 1623076)
+        # M = np.zeros(batch_laplacian_shape, dtype=np.float32)
+        # DOES THIS POSITION COULD AFFECT THE TRAINING?  
+
+
         X_batch = np.zeros(batch_shape, dtype=np.float32)
-
-        
-
-
-
-        # gradient loss
-        gradient_loss = grad_image_loss(X_content, preds, gradient_weight)
 
 
         # loss contributions
-        loss = content_loss + style_loss + tv_loss + contrast_loss + gradient_loss
+        if gradient:
+            gradient_loss = grad_image_loss(X_content, preds, gradient_weight)
+            loss = content_loss + style_loss + tv_loss + contrast_loss + gradient_loss
+        else:
+            loss = content_loss + style_loss + tv_loss + contrast_loss
 
 
         if logs:
@@ -300,7 +299,12 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 is_last = epoch == epochs - 1 and iterations * batch_size >= num_examples
                 should_print = is_print_iter or is_last
                 if should_print:
-                    to_get = [style_loss, content_loss, tv_loss, contrast_loss, gradient_loss, loss, preds]
+
+                    if gradient:
+                        to_get = [style_loss, content_loss, tv_loss, contrast_loss, gradient_loss, loss, preds]
+                    else:
+                        to_get = [style_loss, content_loss, tv_loss, contrast_loss, loss, preds]
+
                     test_feed_dict = {
                        style_image:style_pre,
                        X_content:X_batch,
@@ -316,10 +320,12 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     else:
                         tup = sess.run(to_get, feed_dict = test_feed_dict)
 
-                    _style_loss,_content_loss,_tv_loss, _contrast_loss, _gradient_loss, _loss,_preds = tup
+                    
                     if gradient:
+                        _style_loss,_content_loss,_tv_loss, _contrast_loss, _gradient_loss, _loss,_preds = tup
                         losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _gradient_loss, _loss)
                     else:
+                        _style_loss,_content_loss,_tv_loss, _contrast_loss, _loss,_preds = tup
                         losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _loss)
 
                     if slow:
