@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 from utils import save_img, get_img, exists, list_files
 import evaluate
 import time
+import json
 
 #for copying
 from shutil import copyfile
@@ -197,6 +198,11 @@ def main():
         options.affine_weight,
         options.vgg_path
     ]
+
+
+    # save options in json
+    with open(os.path.join(options.test_dir, "options.json"), "w") as f:
+        f.write(json.dumps(vars(options), sort_keys=True, indent=4))
 
 
     for preds, losses, i, epoch in optimize(*args, **kwargs):
