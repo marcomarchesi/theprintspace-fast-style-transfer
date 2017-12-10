@@ -317,7 +317,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                         tup = sess.run(to_get, feed_dict = test_feed_dict)
 
                     _style_loss,_content_loss,_tv_loss, _contrast_loss, _gradient_loss, _loss,_preds = tup
-                    losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _gradient_loss, _loss)
+                    if gradient:
+                        losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _gradient_loss, _loss)
+                    else:
+                        losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _loss)
 
                     if slow:
                        _preds = vgg.unprocess(_preds)
