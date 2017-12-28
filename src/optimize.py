@@ -12,7 +12,7 @@ from random import randint
 from closed_form_matting import getLaplacian, getLaplacianAsThree
 
 STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
-CONTENT_LAYER = 'relu4_2'
+CONTENT_LAYER = 'relu4_2'  # it was 4_2
 DEVICES = '/gpu:0'
 
 laplacian_shape = (65536, 65536)
@@ -189,12 +189,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         x_tv = tf.nn.l2_loss(preds[:,:,1:,:] - preds[:,:,:batch_shape[2]-1,:])
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
-
         # affine
         # batch_laplacian_shape = (batch_size, 1623076)
         # M = np.zeros(batch_laplacian_shape, dtype=np.float32)
         # DOES THIS POSITION COULD AFFECT THE TRAINING?  
-
 
         X_batch = np.zeros(batch_shape, dtype=np.float32)
 
@@ -205,7 +203,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
             loss = content_loss + style_loss + tv_loss + contrast_loss + gradient_loss
         else:
             loss = content_loss + style_loss + tv_loss + contrast_loss
-
 
         if logs:
             # summaries for TensorBoard
@@ -220,10 +217,12 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     tf.summary.scalar('gradient_loss', gradient_loss)
                 tf.summary.scalar('total_loss', loss)
 
+                tf.summary.image('batch', X_content)
+                tf.summary.image('predicted', preds_pre)
+
             merged = tf.summary.merge_all()
             summary_writer = tf.summary.FileWriter('./logs',
                                           sess.graph)
-
 
 
         # overall loss
@@ -232,8 +231,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
         # initialize variables
         sess.run(tf.global_variables_initializer())
-
-        
 
         print("Number of examples: %i" % num_examples)
         print("Batch size: %i" % batch_size)
@@ -268,7 +265,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 step = curr + batch_size
 
                 for j, img_p in enumerate(content_targets[curr:step]):
-                   print(img_p)
+                   # print(img_p)
                    if affine:
                     if j == 0:
                         _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
@@ -279,7 +276,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                    # if affine:
                    #  _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
                    
-                   
+                print ("Iteration: %i" % iterations)  
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
 
@@ -312,7 +309,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                        X_contrast: sobel(X_batch)
                     }
 
-
                     global_step = (epoch + 1) * iterations
                     # print("Global Step: %i" % global_step)
                     if logs:
@@ -321,7 +317,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     else:
                         tup = sess.run(to_get, feed_dict = test_feed_dict)
 
-                    
                     if gradient:
                         _style_loss,_content_loss,_tv_loss, _contrast_loss, _gradient_loss, _loss,_preds = tup
                         losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _gradient_loss, _loss)
