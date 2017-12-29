@@ -3,10 +3,12 @@ import functools
 import vgg, pdb, time
 import tensorflow as tf, numpy as np, os
 import transform
-from utils import get_img, list_abs_files
+from utils import get_img, list_abs_files, get_img_from_hdf5
 import random
 from scipy import ndimage
 from random import randint
+
+import h5py
 
 # add laplacian
 from closed_form_matting import getLaplacian, getLaplacianAsThree
@@ -17,6 +19,10 @@ DEVICES = '/gpu:0'
 
 laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
+
+
+# hfd5
+hf = h5py.File('./data/data.h5', 'r')
 # laplacian_values = np.load('./laplacian_data/dataset_laplacian.npy')
 
 # for debug mode
@@ -248,6 +254,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         for epoch in range(epochs):
             num_examples = len(content_targets)
             iterations = 0
+            index = 0
 
             # style image to use
             if multiple_style_images: 
@@ -266,11 +273,15 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
                 for j, img_p in enumerate(content_targets[curr:step]):
                    # print(img_p)
+                   
                    if affine:
                     if j == 0:
                         _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
                         M[j] = values
-                   X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
+                   X_batch[j] = get_img_from_hdf5(index, hf)
+                   # X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
+
+                   index += 1
                    # key = os.path.split(img_p)[1]
                    # values = laplacian_values[()][key]
                    # if affine:
