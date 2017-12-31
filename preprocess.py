@@ -26,11 +26,11 @@ def build_parser():
 
     parser.add_argument('--hdf5', action='store_true', default=False)
     parser.add_argument('--crop', action='store_true', default=False)
-    parser.add_argument('--random', action='store_true', default=False)
+    parser.add_argument('--laplacian', action='store_true', default=False)
     return parser
 
-def random_select(files, size):
-    return sample(range(len(files)), size)
+# def random_select(files, size):
+#     return sample(range(len(files)), size)
 
 def calculate_laplacian(img):
     X = get_img(img, (256,256,3)).astype(np.float32)
@@ -70,7 +70,6 @@ def main():
                 im.save(dst)
         return
     if args.hdf5:
-        print("HDF5 selected")
         train_shape = (len(files), 256, 256, 3)
         with h5py.File('./data/data.h5', 'w') as hf:
             hf.create_dataset("train_img", train_shape, np.uint8)
@@ -89,16 +88,16 @@ def main():
                 hf["train_img"][i] = im_arr
                 im.close()
         return
-    if args.random:
-        #random select the images for calculate affine loss
-        selection = random_select(files, args.size)
-        for i in tqdm(range(len(selection))):
-            copyfile(os.path.join(args.dir, files[i]), os.path.join(args.dest, files[i]))
-            abs_path = os.path.join(args.dest, files[i])
-            key = os.path.split(abs_path)[1]
-            value = calculate_laplacian(abs_path)
-            dictionary[key] = value
-        np.save('./data/dataset_laplacian.npy', dictionary)
+    if args.laplacian:
+        laplacian_shape = (len(files), 1623076)
+        with h5py.File('./data/laplacian.h5', 'w') as hf:
+            hf.create_dataset("laplacian_img", laplacian_shape, np.float32)
+            for i in tqdm(range(len(files))):
+                src = os.path.join(args.dir, files[i])
+                value = calculate_laplacian(src)
+                # print(value.shape)
+                # return
+                hf["laplacian_img"][i] = value
         return
 
 if __name__ == '__main__':
