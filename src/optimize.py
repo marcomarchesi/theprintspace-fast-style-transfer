@@ -301,9 +301,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                    # X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
 
                    if affine:
-                    if j == 0:
-                        _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
-                        M[j] = values
+                    # if j == 0:
+                    _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
+                    M[j] = values
 
                    index += 1
                    # key = os.path.split(img_p)[1]
