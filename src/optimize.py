@@ -321,7 +321,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
 
-                if gradient || affine:
+                # TODO add condition for gradient
+                if affine:
                     feed_dict = {
                        style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
                     }
@@ -355,7 +356,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     else:
                         to_get = [style_loss, content_loss, tv_loss, loss, preds]
 
-                    if gradient || affine:
+                    # TODO add condition for gradient
+                    if affine:
                         test_feed_dict = {
                            style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
                         }
@@ -383,10 +385,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                         _style_loss,_content_loss,_tv_loss, _contrast_loss, _affine_loss, _loss,_preds = tup
                         losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _affine_loss, _loss)
                     elif contrast:
-                         _style_loss,_content_loss,_tv_loss, _contrast_loss, _loss,_preds = tup
+                        _style_loss,_content_loss,_tv_loss, _contrast_loss, _loss,_preds = tup
                         losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _loss)
                     else:
-                         _style_loss,_content_loss,_tv_loss, _loss,_preds = tup
+                        _style_loss,_content_loss,_tv_loss, _loss,_preds = tup
                         losses = (_style_loss, _content_loss, _tv_loss, _loss)                   
 
                     if slow:
