@@ -3,7 +3,7 @@ import functools
 import vgg, pdb, time
 import tensorflow as tf, numpy as np, os
 import transform
-from utils import get_img, list_abs_files, get_img_from_hdf5
+from utils import get_img, list_abs_files, get_img_from_hdf5, get_laplacian_from_hdf5
 import random
 from scipy import ndimage
 from random import randint
@@ -22,8 +22,11 @@ laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
 
 
+
 # hfd5
 hf = h5py.File('./data/data.h5', 'r')
+laplacian_hf = h5py.File('./data/laplacian.h5', 'r')
+laplacian_hf_size = len(laplacian_hf["laplacian_img"])
 # laplacian_values = np.load('./laplacian_data/dataset_laplacian.npy')
 
 # for debug mode
@@ -91,15 +94,14 @@ def show_features(features, image):
 def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight, gradient_weight,
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
-             learning_rate=1e-3, debug=False, no_gpu=False, logs=False, affine=False, gradient=False, 
+             learning_rate=1e-3, debug=False, no_gpu=False, logs=False, 
+             affine=False, gradient=False, contrast=False, 
              multiple_style_images=False, num_examples=1000):
 
 
     DEVICES = '/gpu:0'
     config = tf.ConfigProto(allow_soft_placement=True)
 
-    if affine:
-        batch_size = 1
     
     if slow:
         batch_size = 1
@@ -180,6 +182,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
         # affine loss
         affine_loss = tf.constant(0.0)
+        if affine:
+            affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
 
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
@@ -215,8 +219,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
         # affine
-        batch_laplacian_shape = (batch_size, 1623076)
+        # batch_laplacian_shape = (batch_size, 1623076)
+        batch_laplacian_shape = (laplacian_hf_size, 1623076)
         M = np.zeros(batch_laplacian_shape, dtype=np.float32)
+
         # DOES THIS POSITION COULD AFFECT THE TRAINING?  
         X_batch = np.zeros(batch_shape, dtype=np.float32)
 
@@ -224,13 +230,13 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # loss contributions
         if gradient:
             gradient_loss = grad_image_loss(X_content, preds, gradient_weight)
-            loss = content_loss + style_loss + tv_loss + contrast_loss + gradient_loss
-        else:
-            loss = content_loss + style_loss + tv_loss + contrast_loss
-
-        if affine:
-            affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
+            loss = content_loss + style_loss + tv_loss + contrast_loss + affine_loss + gradient_loss
+        elif affine:
             loss = content_loss + style_loss + tv_loss + contrast_loss + affine_loss
+        elif contrast:
+            loss = content_loss + style_loss + tv_loss + contrast_loss
+        else:
+            loss = content_loss + style_loss + tv_loss
 
         if logs:
             # summaries for TensorBoard
@@ -240,7 +246,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 tf.summary.scalar('tv_loss', tv_loss)
                 if affine:
                     tf.summary.scalar('affine_loss', affine_loss)
-                tf.summary.scalar('contrast_loss', contrast_loss)
+                if contrast:
+                    tf.summary.scalar('contrast_loss', contrast_loss)
                 if gradient:
                     tf.summary.scalar('gradient_loss', gradient_loss)
                 tf.summary.scalar('total_loss', loss)
@@ -277,6 +284,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
             num_examples = len(content_targets)
             iterations = 0
             index = 0
+            laplacian_index = 0
 
             # style image to use
             if multiple_style_images: 
@@ -295,32 +303,36 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
                 for j, img_p in enumerate(content_targets[curr:step]):
                    # print(img_p)
-                   
-
+                   print(j)
+                   # read images from hdf5
                    X_batch[j] = get_img_from_hdf5(index, hf)
                    # X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
 
                    if affine:
-                    # if j == 0:
-                    _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
-                    M[j] = values
+                    if j == 0:
+                        M[laplacian_index] = get_laplacian_from_hdf5(laplacian_index, laplacian_hf)
+                        print(laplacian_index)
 
                    index += 1
-                   # key = os.path.split(img_p)[1]
-                   # values = laplacian_values[()][key]
-                   # if affine:
-                   #  _, values, __ = getLaplacianAsThree(X_batch[j] / 255.)
+                   
+                laplacian_index += 1
                    
                 print ("Iteration: %i" % iterations)  
                 iterations += 1
                 assert X_batch.shape[0] == batch_size
 
-                feed_dict = {
-                   style_image:style_pre,
-                   X_content:X_batch,
-                   X_contrast: sobel(X_batch),
-                   X_MM: M
-                }
+                if gradient || affine:
+                    feed_dict = {
+                       style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
+                    }
+                elif contrast:
+                    feed_dict = {
+                       style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch)
+                    }
+                else:
+                    feed_dict = {
+                       style_image:style_pre, X_content:X_batch
+                    }
 
                 train_step.run(feed_dict=feed_dict)
                 end_time = time.time()
@@ -335,16 +347,26 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 if should_print:
 
                     if gradient:
-                        to_get = [style_loss, content_loss, tv_loss, affine_loss, contrast_loss, gradient_loss, loss, preds]
+                        to_get = [style_loss, content_loss, tv_loss, contrast_loss, affine_loss, gradient_loss, loss, preds]
+                    elif affine:
+                        to_get = [style_loss, content_loss, tv_loss, contrast_loss, affine_loss, loss, preds]
+                    elif contrast:
+                        to_get = [style_loss, content_loss, tv_loss, contrast_loss, loss, preds]
                     else:
-                        to_get = [style_loss, content_loss, tv_loss, affine_loss, contrast_loss, loss, preds]
+                        to_get = [style_loss, content_loss, tv_loss, loss, preds]
 
-                    test_feed_dict = {
-                       style_image:style_pre,
-                       X_content:X_batch,
-                       X_contrast: sobel(X_batch),
-                       X_MM: M
-                    }
+                    if gradient || affine:
+                        test_feed_dict = {
+                           style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
+                        }
+                    elif contrast:
+                        test_feed_dict = {
+                           style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch)
+                        }
+                    else:
+                        test_feed_dict = {
+                           style_image:style_pre, X_content:X_batch
+                        }
 
                     global_step = (epoch + 1) * iterations
                     # print("Global Step: %i" % global_step)
@@ -357,9 +379,15 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     if gradient:
                         _style_loss,_content_loss,_tv_loss, _contrast_loss, _affine_loss, _gradient_loss, _loss,_preds = tup
                         losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _affine_loss, _gradient_loss, _loss)
-                    else:
+                    elif affine:
                         _style_loss,_content_loss,_tv_loss, _contrast_loss, _affine_loss, _loss,_preds = tup
                         losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _affine_loss, _loss)
+                    elif contrast:
+                         _style_loss,_content_loss,_tv_loss, _contrast_loss, _loss,_preds = tup
+                        losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _loss)
+                    else:
+                         _style_loss,_content_loss,_tv_loss, _loss,_preds = tup
+                        losses = (_style_loss, _content_loss, _tv_loss, _loss)                   
 
                     if slow:
                        _preds = vgg.unprocess(_preds)

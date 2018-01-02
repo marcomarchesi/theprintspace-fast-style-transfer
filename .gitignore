@@ -1,6 +1,7 @@
 data/
 tests/
 test/
+test*
 
 checkpoint/
 checkpoint*

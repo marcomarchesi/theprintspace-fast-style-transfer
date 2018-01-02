@@ -27,6 +27,7 @@ def build_parser():
     parser.add_argument('--hdf5', action='store_true', default=False)
     parser.add_argument('--crop', action='store_true', default=False)
     parser.add_argument('--laplacian', action='store_true', default=False)
+    parser.add_argument('--batch_size', type=int, default=30)
     return parser
 
 # def random_select(files, size):
@@ -89,15 +90,21 @@ def main():
                 im.close()
         return
     if args.laplacian:
-        laplacian_shape = (len(files), 1623076)
+        batch_size = args.batch_size
+        num_samples = int(len(files) / batch_size) + 1
+        laplacian_shape = (num_samples, 1623076)
+        # laplacian_shape = (len(files), 1623076)
         with h5py.File('./data/laplacian.h5', 'w') as hf:
             hf.create_dataset("laplacian_img", laplacian_shape, np.float32)
+            current_sample = 0
             for i in tqdm(range(len(files))):
-                src = os.path.join(args.dir, files[i])
-                value = calculate_laplacian(src)
-                # print(value.shape)
-                # return
-                hf["laplacian_img"][i] = value
+                if i % batch_size == 0:
+                    src = os.path.join(args.dir, files[i])
+                    value = calculate_laplacian(src)
+                    # print(value.shape)
+                    # return
+                    hf["laplacian_img"][current_sample] = value
+                    current_sample += 1
         return
 
 if __name__ == '__main__':

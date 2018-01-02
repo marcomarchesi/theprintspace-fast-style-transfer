@@ -89,6 +89,9 @@ def build_parser():
                         help='contrast weight (default %(default)s)',
                         metavar='CONTRAST_WEIGHT', default=CONTRAST_WEIGHT)
 
+    parser.add_argument('--contrast', dest='contrast', action='store_true',
+                        help='contrast loss enabled', default=False)
+
     parser.add_argument('--gradient-weight', type=float,
                         dest='gradient_weight',
                         help='gradient weight (default %(default)s)',
@@ -178,6 +181,7 @@ def main():
         "logs":options.logs,
         "affine":options.affine,
         "gradient":options.gradient,
+        "contrast":options.contrast,
         "multiple_style_images":options.multiple_style_images
     }
 
@@ -210,9 +214,15 @@ def main():
         if options.gradient:
             style_loss, content_loss, tv_loss, contrast_loss, affine_loss, gradient_loss, loss = losses
             to_print = (style_loss, content_loss, tv_loss, contrast_loss, affine_loss, gradient_loss)
-        else:
+        elif options.affine:
             style_loss, content_loss, tv_loss, contrast_loss, affine_loss, loss = losses
             to_print = (style_loss, content_loss, tv_loss, contrast_loss, affine_loss)
+        elif options.contrast:
+            style_loss, content_loss, tv_loss, contrast_loss, loss = losses
+            to_print = (style_loss, content_loss, tv_loss, contrast_loss) 
+        else:
+            style_loss, content_loss, tv_loss, loss = losses
+            to_print = (style_loss, content_loss, tv_loss) 
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
         # print('style: %s, content:%s, tv: %s, contrast: %s, gradient: %s' % to_print)
