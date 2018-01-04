@@ -62,18 +62,17 @@ def get_gradient(img_array):
     return tf.image.total_variation(img_array)
 
 
-def get_affine_loss(output, batch_size, MM, weight):
+def get_affine_loss(output, MM, weight):
     loss_affine = 0.0
-    for i in range(batch_size):
-        _M = tf.SparseTensor(laplacian_indices, MM[i], laplacian_shape)
-        output_t = output[i] / 255.
-        for Vc in tf.unstack(output_t, axis=-1):
-            Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
-            ravel_0 = tf.expand_dims(Vc_ravel, 0)
-            ravel_0 = tf.cast(ravel_0, tf.float32)
-            ravel_1 = tf.expand_dims(Vc_ravel, -1)
-            ravel_1 = tf.cast(ravel_1, tf.float32)
-            loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
+    _M = tf.SparseTensor(laplacian_indices, MM, laplacian_shape)
+    output_t = output / 255.
+    for Vc in tf.unstack(output_t, axis=-1):
+        Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
+        ravel_0 = tf.expand_dims(Vc_ravel, 0)
+        ravel_0 = tf.cast(ravel_0, tf.float32)
+        ravel_1 = tf.expand_dims(Vc_ravel, -1)
+        ravel_1 = tf.cast(ravel_1, tf.float32)
+        loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
 
     return tf.reduce_mean(loss_affine * weight)
 
@@ -183,7 +182,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # affine loss
         affine_loss = tf.constant(0.0)
         if affine:
-            affine_loss = get_affine_loss(preds_pre, batch_size, X_MM, affine_weight)
+            affine_loss = get_affine_loss(preds_pre, X_MM, affine_weight)
 
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
@@ -219,8 +218,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
         # affine
-        # batch_laplacian_shape = (batch_size, 1623076)
-        batch_laplacian_shape = (laplacian_hf_size, 1623076)
+        # batch_laplacian_shape = (laplacian_hf_size, 1623076)
+        batch_laplacian_shape = (1, 1623076)
         M = np.zeros(batch_laplacian_shape, dtype=np.float32)
 
         # DOES THIS POSITION COULD AFFECT THE TRAINING?  
@@ -312,7 +311,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     if j == 0:
                         filepath = './data/laplacian/' + str(laplacian_index) + '.h5'
                         laplacian_hf = h5py.File(filepath, 'r')
-                        M[laplacian_index] = get_laplacian_from_hdf5(0, laplacian_hf)
+                        M = get_laplacian_from_hdf5(0, laplacian_hf)
                         laplacian_hf.close()
 
                    index += 1
