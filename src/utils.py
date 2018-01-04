@@ -40,6 +40,13 @@ def list_files(in_path):
         break
     return files
 
+def num_files(in_path):
+    counter = 0
+    files = list_files(in_path)
+    for filename in files:
+      counter += 1
+    return counter
+
 def list_abs_files(in_path):
     files = list_files(in_path)
     abs_files = []

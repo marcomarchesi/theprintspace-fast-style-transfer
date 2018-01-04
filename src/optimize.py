@@ -3,7 +3,7 @@ import functools
 import vgg, pdb, time
 import tensorflow as tf, numpy as np, os
 import transform
-from utils import get_img, list_abs_files, get_img_from_hdf5, get_laplacian_from_hdf5
+from utils import get_img, list_abs_files, get_img_from_hdf5, get_laplacian_from_hdf5, num_files
 import random
 from scipy import ndimage
 from random import randint
@@ -25,9 +25,9 @@ laplacian_indices = np.load('./laplacian_data/indices.npy')
 
 # hfd5
 hf = h5py.File('./data/data.h5', 'r')
-laplacian_hf = h5py.File('./data/laplacian.h5', 'r')
-laplacian_hf_size = len(laplacian_hf["laplacian_img"])
-# laplacian_values = np.load('./laplacian_data/dataset_laplacian.npy')
+# laplacian_hf_size = 82783
+laplacian_hf_size = num_files('./data/laplacian/')
+
 
 # for debug mode
 uid = random.randint(1, 100)
@@ -310,8 +310,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
                    if affine:
                     if j == 0:
-                        M[laplacian_index] = get_laplacian_from_hdf5(laplacian_index, laplacian_hf)
-                        print(laplacian_index)
+                        filepath = './data/laplacian/' + str(laplacian_index) + '.h5'
+                        laplacian_hf = h5py.File(filepath, 'r')
+                        M[laplacian_index] = get_laplacian_from_hdf5(0, laplacian_hf)
+                        laplacian_hf.close()
 
                    index += 1
                    

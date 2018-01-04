@@ -18,7 +18,7 @@ def build_parser():
     parser = ArgumentParser()
     parser.add_argument('--dir', type=str,
                             dest='dir', help='dataset dir',
-                            metavar='DIR', required=True)
+                            metavar='DIR')
     parser.add_argument('--dest', type=str,
                         dest='dest')
     parser.add_argument('--size', dest='size', type=int,
@@ -27,6 +27,7 @@ def build_parser():
     parser.add_argument('--hdf5', action='store_true', default=False)
     parser.add_argument('--crop', action='store_true', default=False)
     parser.add_argument('--laplacian', action='store_true', default=False)
+    parser.add_argument('--mode', type=str)
     parser.add_argument('--batch_size', type=int, default=30)
     return parser
 
@@ -49,12 +50,11 @@ def grayscale_to_rgb(img, size):
 def main():
     parser = build_parser()
     args = parser.parse_args()
-    assert os.path.exists(args.dir)
-    files = list_files(args.dir)
-    dictionary = {}
-    counter = 0
 
-    if args.crop:
+
+    if args.mode == 'crop':
+        assert os.path.exists(args.dir)
+        files = list_files(args.dir)
         print("Cropping images...")
         for i in tqdm(range(len(files))):
             src = os.path.join(args.dir, files[i])
@@ -70,7 +70,9 @@ def main():
                 dst = os.path.join(args.dest, files[i])
                 im.save(dst)
         return
-    if args.hdf5:
+    if args.mode == 'hdf5':
+        assert os.path.exists(args.dir)
+        files = list_files(args.dir)
         train_shape = (len(files), 256, 256, 3)
         with h5py.File('./data/data.h5', 'w') as hf:
             hf.create_dataset("train_img", train_shape, np.uint8)
@@ -89,7 +91,9 @@ def main():
                 hf["train_img"][i] = im_arr
                 im.close()
         return
-    if args.laplacian:
+    if args.mode == 'laplacian':
+        assert os.path.exists(args.dir)
+        files = list_files(args.dir)
         batch_size = args.batch_size
         num_samples = int(len(files) / batch_size) + 1
         laplacian_shape = (num_samples, 1623076)
@@ -105,6 +109,17 @@ def main():
                     # return
                     hf["laplacian_img"][current_sample] = value
                     current_sample += 1
+        return
+    if args.mode == 'split':
+        laplacian_hf = h5py.File('./data/laplacian.h5', 'r')
+        laplacian_hf_size = len(laplacian_hf["laplacian_img"])
+        laplacian_shape = (1, 1623076)
+        for i in tqdm(range(laplacian_hf_size)):
+            filepath = './data/laplacian/' + str(i) + '.h5'
+            with h5py.File(filepath, 'w') as hf:
+                hf.create_dataset("laplacian_img", laplacian_shape, np.float32)
+                hf["laplacian_img"][0] = laplacian_hf["laplacian_img"][i]
+        laplacian_hf.close()
         return
 
 if __name__ == '__main__':
