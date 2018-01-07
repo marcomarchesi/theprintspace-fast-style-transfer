@@ -64,8 +64,9 @@ def get_gradient(img_array):
 
 def get_affine_loss(output, MM, weight):
     loss_affine = 0.0
-    _M = tf.SparseTensor(laplacian_indices, MM, laplacian_shape)
-    output_t = output / 255.
+    # for i in range(batch_size):
+    _M = tf.SparseTensor(laplacian_indices, MM[0], laplacian_shape)
+    output_t = output[0] / 255.
     for Vc in tf.unstack(output_t, axis=-1):
         Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
         ravel_0 = tf.expand_dims(Vc_ravel, 0)
@@ -218,9 +219,13 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
         # affine
+        batch_laplacian_shape = (batch_size, 1623076)
         # batch_laplacian_shape = (laplacian_hf_size, 1623076)
-        batch_laplacian_shape = (1, 1623076)
+        # M = np.zeros(batch_laplacian_shape, dtype=np.float32)
         M = np.zeros(batch_laplacian_shape, dtype=np.float32)
+
+        print("M")
+        print(M.shape)
 
         # DOES THIS POSITION COULD AFFECT THE TRAINING?  
         X_batch = np.zeros(batch_shape, dtype=np.float32)
@@ -311,7 +316,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     if j == 0:
                         filepath = './data/laplacian/' + str(laplacian_index) + '.h5'
                         laplacian_hf = h5py.File(filepath, 'r')
-                        M = get_laplacian_from_hdf5(0, laplacian_hf)
+
+                        M[0] = get_laplacian_from_hdf5(0, laplacian_hf)
+                        
                         laplacian_hf.close()
 
                    index += 1
