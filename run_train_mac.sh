@@ -8,5 +8,4 @@ python style.py --style-dir '/Users/marcomarchesi/Desktop/theprintspace-fast-sty
     --batch-size 2 \
     --epochs 1 \
     --no-gpu \
-    --affine \
-    --logs
+    --affine 

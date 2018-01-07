@@ -62,20 +62,23 @@ def get_gradient(img_array):
     return tf.image.total_variation(img_array)
 
 
-def get_affine_loss(output, MM, weight):
-    loss_affine = 0.0
-    # for i in range(batch_size):
-    _M = tf.SparseTensor(laplacian_indices, MM[0], laplacian_shape)
-    output_t = output[0] / 255.
-    for Vc in tf.unstack(output_t, axis=-1):
-        Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
-        ravel_0 = tf.expand_dims(Vc_ravel, 0)
-        ravel_0 = tf.cast(ravel_0, tf.float32)
-        ravel_1 = tf.expand_dims(Vc_ravel, -1)
-        ravel_1 = tf.cast(ravel_1, tf.float32)
-        loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
+def get_affine_loss(output, MM, weight, affine_enabled):
+    if affine_enabled == True:
+        loss_affine = 0.0
+        # for i in range(batch_size):
+        _M = tf.SparseTensor(laplacian_indices, MM[0], laplacian_shape)
+        output_t = output[0] / 255.
+        for Vc in tf.unstack(output_t, axis=-1):
+            Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
+            ravel_0 = tf.expand_dims(Vc_ravel, 0)
+            ravel_0 = tf.cast(ravel_0, tf.float32)
+            ravel_1 = tf.expand_dims(Vc_ravel, -1)
+            ravel_1 = tf.cast(ravel_1, tf.float32)
+            loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
 
-    return tf.reduce_mean(loss_affine * weight)
+        return tf.reduce_mean(loss_affine * weight)
+    else:
+        return tf.constant(0.0)
 
 
 def show_features(features, image):
@@ -155,6 +158,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
         # for affine loss
         X_MM = tf.placeholder(tf.float32, name="X_MM")
+        # conditional affine loss
+        affine_enabled_tensor = tf.placeholder(tf.bool)
  
         # precompute content features
         content_features = {}
@@ -183,7 +188,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # affine loss
         affine_loss = tf.constant(0.0)
         if affine:
-            affine_loss = get_affine_loss(preds_pre, X_MM, affine_weight)
+            affine_loss = get_affine_loss(preds_pre, X_MM, affine_weight, affine_enabled_tensor)
 
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
@@ -224,8 +229,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # M = np.zeros(batch_laplacian_shape, dtype=np.float32)
         M = np.zeros(batch_laplacian_shape, dtype=np.float32)
 
-        print("M")
-        print(M.shape)
 
         # DOES THIS POSITION COULD AFFECT THE TRAINING?  
         X_batch = np.zeros(batch_shape, dtype=np.float32)
@@ -290,6 +293,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
             index = 0
             laplacian_index = 0
 
+            affine_enabled_bool = False
+            if epoch > 0:
+                affine_enabled_bool = True
+
             # style image to use
             if multiple_style_images: 
                 random_item = randint(0, len(style_images))
@@ -318,7 +325,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                         laplacian_hf = h5py.File(filepath, 'r')
 
                         M[0] = get_laplacian_from_hdf5(0, laplacian_hf)
-                        
+
                         laplacian_hf.close()
 
                    index += 1
@@ -332,7 +339,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 # TODO add condition for gradient
                 if affine:
                     feed_dict = {
-                       style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
+                       style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M,
+                       affine_enabled_tensor: affine_enabled_bool
                     }
                 elif contrast:
                     feed_dict = {
@@ -367,7 +375,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     # TODO add condition for gradient
                     if affine:
                         test_feed_dict = {
-                           style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
+                           style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M,
+                           affine_enabled_tensor: affine_enabled_bool
                         }
                     elif contrast:
                         test_feed_dict = {
