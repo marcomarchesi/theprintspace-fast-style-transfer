@@ -112,6 +112,9 @@ def build_parser():
 
     parser.add_argument('--affine', dest='affine', action='store_true',
                         help='affine loss enabled', default=False)
+
+    parser.add_argument('--affine-plus', dest='affine_plus', action='store_true',
+                        help='image affine loss enabled', default=False)
     
     parser.add_argument('--affine-weight', type=float,
                         dest='affine_weight',
@@ -180,6 +183,7 @@ def main():
         "no_gpu":options.no_gpu,
         "logs":options.logs,
         "affine":options.affine,
+        "affine_plus":options.affine_plus,
         "gradient":options.gradient,
         "contrast":options.contrast,
         "multiple_style_images":options.multiple_style_images

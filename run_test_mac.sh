@@ -1,6 +1,6 @@
 #! /bin/bash
 
-python evaluate.py --checkpoint '/Users/marcomarchesi/Desktop/fast-style-transfer/checkpoint/checkpoint_bailey_affine/fns.ckpt' \
-  --in-path '/Users/marcomarchesi/Desktop/fast-style-transfer/input' \
-  --out-path '/Users/marcomarchesi/Desktop/fast-style-transfer/output' \
+python evaluate.py --checkpoint '/Users/marcomarchesi/Desktop/theprintspace-fast-style-transfer/checkpoint/ckpt_007/fns.ckpt' \
+  --in-path '/Users/marcomarchesi/Desktop/theprintspace-fast-style-transfer/input' \
+  --out-path '/Users/marcomarchesi/Desktop/theprintspace-fast-style-transfer/output' \
   --allow-different-dimensions

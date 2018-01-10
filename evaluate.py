@@ -13,6 +13,9 @@ import subprocess
 import numpy
 
 
+from smooth_local_affine import smooth_local_affine
+
+
 
 from datetime import datetime 
 startTime= datetime.now() 
@@ -184,6 +187,7 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4):
 
 
             for j, path_out in enumerate(curr_batch_out):
+                print(img.shape)
                 save_img(path_out, _preds[j])
 
         remaining_in = data_in[num_iters*batch_size:]
