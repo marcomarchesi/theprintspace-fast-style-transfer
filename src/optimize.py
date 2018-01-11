@@ -275,12 +275,21 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
 
         # overall loss
-        train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-        
+        # train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+
 
         # initialize variables
         sess.run(tf.global_variables_initializer())
 
+        #L-BFGS-B
+        style_pre = np.expand_dims(np.array(style_images[0]), axis=0)
+        feed_dict = {
+                       style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
+        }
+        train_step = tf.contrib.opt.ScipyOptimizerInterface(loss, method='L-BFGS-B', options={'maxiter': 100, 'disp': 0})
+        train_step.minimize(sess, fetches=[content_loss, style_loss, contrast_loss, affine_loss],
+                                  feed_dict=feed_dict)
+        
         print("Number of examples: %i" % num_examples)
         print("Batch size: %i" % batch_size)
 
@@ -351,7 +360,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                        style_image:style_pre, X_content:X_batch
                     }
 
-                train_step.run(feed_dict=feed_dict)
+                # train_step.run(feed_dict=feed_dict)
                 end_time = time.time()
                 delta_time = end_time - start_time
                 if debug:

@@ -2,6 +2,7 @@ data/
 tests/
 test/
 test*
+content/
 
 checkpoint/
 checkpoint*
