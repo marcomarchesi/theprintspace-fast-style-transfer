@@ -22,6 +22,7 @@ laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
 
 
+
 # hfd5
 hf = h5py.File('./data/data.h5', 'r')
 # laplacian_hf_size = 82783
@@ -49,35 +50,42 @@ def sobel(img_array):
 
     return col
 
+def grad_image_loss(content, image, weight):
+    # get_gradient(image)
+    # return tf.reduce_mean(tf.squared_difference(content, image)) * weight
+    return tf.reduce_mean(tf.squared_difference(tf.image.total_variation(content), tf.image.total_variation(image))) * weight
 
-# def get_affine_loss_plus(output, M, weight):
-#     loss_affine = 0.0
-#     output_t = output / 255.
-#     for Vc in tf.unstack(output_t, axis=-1):
-#         Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
-#         loss_affine += tf.matmul(tf.expand_dims(Vc_ravel, 0), tf.sparse_tensor_dense_matmul(M, tf.expand_dims(Vc_ravel, -1)))
+def get_gradient(img_array):
+    '''
+    calculate gradient of batch style_images
+    '''
+    return tf.image.total_variation(img_array)
 
-#     return loss_affine * weight
+def get_affine_loss_plus(output, MM, weight):
+    loss_affine = 0.0
+    _M = tf.SparseTensor(laplacian_indices, MM[0], laplacian_shape)
+    output_t = output[0] / 255.
+    for Vc in tf.unstack(output_t, axis=-1):
+        Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
+        loss_affine += tf.matmul(tf.expand_dims(Vc_ravel, 0), tf.sparse_tensor_dense_matmul(_M, tf.expand_dims(Vc_ravel, -1)))
+
+    return loss_affine * weight
 
 
+def get_affine_loss(output, batch_size, MM, weight):
+    loss_affine = 0.0
+    # for i in range(batch_size):
+    _M = tf.SparseTensor(laplacian_indices, MM[0], laplacian_shape)
+    output_t = output[0] / 255.
+    for Vc in tf.unstack(output_t, axis=-1):
+        Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
+        ravel_0 = tf.expand_dims(Vc_ravel, 0)
+        ravel_0 = tf.cast(ravel_0, tf.float32)
+        ravel_1 = tf.expand_dims(Vc_ravel, -1)
+        ravel_1 = tf.cast(ravel_1, tf.float32)
+        loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
 
-def get_affine_loss(output, MM, weight, affine_enabled):
-    if affine_enabled == True:
-        loss_affine = 0.0
-        # for i in range(batch_size):
-        _M = tf.SparseTensor(laplacian_indices, MM[0], laplacian_shape)
-        output_t = output[0] / 255.
-        for Vc in tf.unstack(output_t, axis=-1):
-            Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
-            ravel_0 = tf.expand_dims(Vc_ravel, 0)
-            ravel_0 = tf.cast(ravel_0, tf.float32)
-            ravel_1 = tf.expand_dims(Vc_ravel, -1)
-            ravel_1 = tf.cast(ravel_1, tf.float32)
-            loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
-
-        return tf.reduce_mean(loss_affine * weight)
-    else:
-        return tf.constant(0.0)
+    return tf.reduce_mean(loss_affine * weight)
 
 
 def show_features(features, image):
@@ -97,7 +105,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
              learning_rate=1e-3, debug=False, no_gpu=False, logs=False, 
-             affine=False, affine_plus=False, gradient=False, contrast=False, 
+             affine=False, gradient=False, contrast=False, 
              multiple_style_images=False, num_examples=1000):
 
 
@@ -105,15 +113,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
     config = tf.ConfigProto(allow_soft_placement=True)
 
     
-    if affine_plus:
+    if slow:
         batch_size = 1
-        reduced_image = get_img("./content/portrait_03.jpg", (256,256,3)).astype(np.float32)
-        content_image = get_img("./content/portrait_03.jpg").astype(np.float32)
-        print("Calculating laplacian...")
-    
-    batch_laplacian_shape = (batch_size, 1623076)
-    M = np.zeros(batch_laplacian_shape, dtype=np.float32)
-
     mod = len(content_targets) % batch_size
     if mod > 0:
         print("Train set has been trimmed slightly..")
@@ -158,12 +159,12 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         X_contrast = tf.placeholder(tf.float32, shape=batch_shape, name="X_contrast")
         X_pre_contrast = vgg.preprocess(X_contrast)
 
-
+        # for gradient loss
+        # X_gradient = tf.placeholder(tf.float32, shape=batch_shape, name="X_gradient")
+        # X_pre_gradient = vgg.preprocess(X_gradient)
 
         # for affine loss
         X_MM = tf.placeholder(tf.float32, name="X_MM")
-        # conditional affine loss
-        affine_enabled_tensor = tf.placeholder(tf.bool)
  
         # precompute content features
         content_features = {}
@@ -173,6 +174,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         contrast_features = {}
         contrast_net = vgg.net(vgg_path, X_pre_contrast)
         contrast_features[CONTENT_LAYER] = contrast_net[CONTENT_LAYER]
+
+        # gradient_features = {}
+        # gradient_net = vgg.net(vgg_path, X_pre_gradient)
+        # gradient_features[CONTENT_LAYER] = gradient_net[CONTENT_LAYER]
 
         if slow:
             preds = tf.Variable(
@@ -188,7 +193,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # affine loss
         affine_loss = tf.constant(0.0)
         if affine:
-            affine_loss = get_affine_loss(preds_pre, X_MM, affine_weight, affine_enabled_tensor)
+            affine_loss = get_affine_loss_plus(preds_pre, X_MM, affine_weight)
 
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
@@ -223,6 +228,14 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         x_tv = tf.nn.l2_loss(preds[:,:,1:,:] - preds[:,:,:batch_shape[2]-1,:])
         tv_loss = tv_weight*2*(x_tv/tv_x_size + y_tv/tv_y_size)/batch_size
 
+        # affine
+        batch_laplacian_shape = (batch_size, 1623076)
+        # batch_laplacian_shape = (laplacian_hf_size, 1623076)
+        # M = np.zeros(batch_laplacian_shape, dtype=np.float32)
+        M = np.zeros(batch_laplacian_shape, dtype=np.float32)
+
+        print("M")
+        print(M.shape)
 
         # DOES THIS POSITION COULD AFFECT THE TRAINING?  
         X_batch = np.zeros(batch_shape, dtype=np.float32)
@@ -268,71 +281,24 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # initialize variables
         sess.run(tf.global_variables_initializer())
 
-
+        print("Number of examples: %i" % num_examples)
+        print("Batch size: %i" % batch_size)
 
         global_step = 0
 
-        if affine_plus:
-            saver = tf.train.Saver()
-            saver.restore(sess, save_path)
-            print("Checkpoint restored")
+        # content_image = get_img("./giraffe.jpg", (256,256,3)).astype(np.float32)
+        # _, values, __ = getLaplacianAsThree(content_image / 255.)
 
-
-            _, M[0], _ = getLaplacianAsThree(content_image / 255.)
-
-            # training
-            iterations = 0
-            epoch = 0
-            style_pre = np.expand_dims(np.array(style_images[0]), axis=0)
-            while iterations < 100:
-                X_batch[0] = reduced_image
-
-
-                print ("Iteration: %i" % iterations)  
-                iterations += 1
-
-
-                feed_dict = {
-                    style_image:style_pre, 
-                    X_content:X_batch, 
-                    X_contrast: sobel(X_batch), 
-                    X_MM: M
-                }
-
-                train_step.run(feed_dict=feed_dict)
-
-                # print results
-                to_get = [style_loss, content_loss, tv_loss, contrast_loss, affine_loss, loss, preds]
-                test_feed_dict = {
-                    style_image:style_pre, 
-                    X_content:X_batch, 
-                    X_contrast: sobel(X_batch), 
-                    X_MM: M
-                }
-
-                tup = sess.run(to_get, feed_dict = test_feed_dict)
-                _style_loss,_content_loss,_tv_loss, _contrast_loss, _affine_loss, _loss,_preds = tup
-                losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _affine_loss, _loss)
-                saver = tf.train.Saver()
-                res = saver.save(sess, save_path)
-                yield(_preds, losses, iterations, epoch)
-
-
-            print("style transfer with affine plus completed")
-            return
-
-
-
+        #if affine:
+        # saver = tf.train.Saver()
+        # saver.restore(sess, save_path)
+        # print("checkpoint restored")
 
         for epoch in range(epochs):
             num_examples = len(content_targets)
             iterations = 0
             index = 0
             laplacian_index = 0
-
-            affine_enabled_bool = False
-            if epoch > 0:
-                affine_enabled_bool = True
 
             # style image to use
             if multiple_style_images: 
@@ -351,6 +317,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
                 for j, img_p in enumerate(content_targets[curr:step]):
                    # print(img_p)
+                   #print(j)
                    # read images from hdf5
                    X_batch[j] = get_img_from_hdf5(index, hf)
                    # X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
@@ -359,9 +326,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     if j == 0:
                         filepath = './data/laplacian/' + str(laplacian_index) + '.h5'
                         laplacian_hf = h5py.File(filepath, 'r')
-
                         M[0] = get_laplacian_from_hdf5(0, laplacian_hf)
-
                         laplacian_hf.close()
 
                    index += 1
@@ -375,8 +340,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 # TODO add condition for gradient
                 if affine:
                     feed_dict = {
-                       style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M,
-                       affine_enabled_tensor: affine_enabled_bool
+                       style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
                     }
                 elif contrast:
                     feed_dict = {
@@ -411,8 +375,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     # TODO add condition for gradient
                     if affine:
                         test_feed_dict = {
-                           style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M,
-                           affine_enabled_tensor: affine_enabled_bool
+                           style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
                         }
                     elif contrast:
                         test_feed_dict = {

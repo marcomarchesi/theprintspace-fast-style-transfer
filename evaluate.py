@@ -13,7 +13,10 @@ import subprocess
 import numpy
 
 
-from smooth_local_affine import smooth_local_affine
+# from smooth_local_affine import smooth_local_affine
+from PIL import Image
+import cv2
+
 
 
 
@@ -188,14 +191,17 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4):
 
             for j, path_out in enumerate(curr_batch_out):
 
-                content_input = img[:, :, ::-1]
-                content_input = content_input.transpose((2, 0, 1))
-                input_ = np.ascontiguousarray(content_input, dtype=np.float32) / 255.
-                _, H, W = np.shape(input_)
-                output_ = np.ascontiguousarray(_preds[j].transpose((2, 0, 1)), dtype=np.float32) / 255.
-                best_ = smooth_local_affine(output_, input_, 1e-7, 3, H, W, 5, 1e-1).transpose(1, 2, 0)
-                result = Image.fromarray(np.uint8(np.clip(best_ * 255., 0, 255.)))
-                result.save(path_out)
+                # content_input = img[:, :, ::-1]
+                # content_input = content_input.transpose((2, 0, 1))
+                # input_ = np.ascontiguousarray(content_input, dtype=np.float32) / 255.
+                # _, H, W = np.shape(input_)
+                # output_ = np.ascontiguousarray(_preds[j].transpose((2, 0, 1)), dtype=np.float32) / 255.
+                # best_ = smooth_local_affine(output_, input_, 1e-7, 3, H, W, 5, 1e-1).transpose(1, 2, 0)
+                # result = Image.fromarray(np.uint8(np.clip(best_ * 255., 0, 255.)))
+                # result.save(path_out)
+
+                output_ = cv2.bilateralFilter(_preds[j],9,75,75)
+                save_img(path_out, output_)
 
                 # save_img(path_out, _preds[j])
 
@@ -252,6 +258,10 @@ def build_parser():
     parser.add_argument('--allow-different-dimensions', action='store_true',
                         dest='allow_different_dimensions', 
                         help='allow different image dimensions')
+
+    parser.add_argument('--smooth-affine', action='store_true',
+                        dest='smooth_affine', 
+                        help='smooth affine')
 
     return parser
 
