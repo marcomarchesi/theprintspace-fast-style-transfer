@@ -200,10 +200,10 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4):
                 # result = Image.fromarray(np.uint8(np.clip(best_ * 255., 0, 255.)))
                 # result.save(path_out)
 
-                output_ = cv2.bilateralFilter(_preds[j],9,75,75)
-                save_img(path_out, output_)
+                # output_ = cv2.bilateralFilter(_preds[j],9,75,75)
+                # save_img(path_out, output_)
 
-                # save_img(path_out, _preds[j])
+                save_img(path_out, _preds[j])
 
         remaining_in = data_in[num_iters*batch_size:]
         remaining_out = paths_out[num_iters*batch_size:]

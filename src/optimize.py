@@ -74,16 +74,16 @@ def get_affine_loss_plus(output, MM, weight):
 
 def get_affine_loss(output, batch_size, MM, weight):
     loss_affine = 0.0
-    # for i in range(batch_size):
-    _M = tf.SparseTensor(laplacian_indices, MM[0], laplacian_shape)
-    output_t = output[0] / 255.
-    for Vc in tf.unstack(output_t, axis=-1):
-        Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
-        ravel_0 = tf.expand_dims(Vc_ravel, 0)
-        ravel_0 = tf.cast(ravel_0, tf.float32)
-        ravel_1 = tf.expand_dims(Vc_ravel, -1)
-        ravel_1 = tf.cast(ravel_1, tf.float32)
-        loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
+    for i in range(batch_size):
+        _M = tf.SparseTensor(laplacian_indices, MM[i], laplacian_shape)
+        output_t = output[0] / 255.
+        for Vc in tf.unstack(output_t, axis=-1):
+            Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
+            ravel_0 = tf.expand_dims(Vc_ravel, 0)
+            ravel_0 = tf.cast(ravel_0, tf.float32)
+            ravel_1 = tf.expand_dims(Vc_ravel, -1)
+            ravel_1 = tf.cast(ravel_1, tf.float32)
+            loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
 
     return tf.reduce_mean(loss_affine * weight)
 
@@ -275,23 +275,12 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
 
         # overall loss
-        # train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-
+        train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+        
 
         # initialize variables
         sess.run(tf.global_variables_initializer())
 
-        #L-BFGS-B
-        style_pre = np.expand_dims(np.array(style_images[0]), axis=0)
-        feed_dict = {
-                       style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
-        }
-        train_step = tf.contrib.opt.ScipyOptimizerInterface(loss, method='L-BFGS-B', options={'maxiter': 100, 'disp': 0})
-        train_step.minimize(sess, fetches=[content_loss, style_loss, contrast_loss, affine_loss],
-                                  feed_dict=feed_dict)
-        
-        print("Number of examples: %i" % num_examples)
-        print("Batch size: %i" % batch_size)
 
         global_step = 0
 
@@ -326,16 +315,19 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
                 for j, img_p in enumerate(content_targets[curr:step]):
                    # print(img_p)
+                   img_filename = os.path.basename(img_p)
                    #print(j)
                    # read images from hdf5
                    X_batch[j] = get_img_from_hdf5(index, hf)
                    # X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
 
                    if affine:
-                    if j == 0:
-                        filepath = './data/laplacian/' + str(laplacian_index) + '.h5'
+                    if j > -1 and j < 4:
+                        print(j)
+                        print(img_filename)
+                        filepath = './data/laplacian/' + img_filename + '.h5'
                         laplacian_hf = h5py.File(filepath, 'r')
-                        M[0] = get_laplacian_from_hdf5(0, laplacian_hf)
+                        M[j] = get_laplacian_from_hdf5(0, laplacian_hf)
                         laplacian_hf.close()
 
                    index += 1
@@ -360,7 +352,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                        style_image:style_pre, X_content:X_batch
                     }
 
-                # train_step.run(feed_dict=feed_dict)
+                train_step.run(feed_dict=feed_dict)
                 end_time = time.time()
                 delta_time = end_time - start_time
                 if debug:

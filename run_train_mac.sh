@@ -5,8 +5,9 @@ python style.py --style-dir '/Users/marcomarchesi/Desktop/theprintspace-fast-sty
     --test-dir '/Users/marcomarchesi/Desktop/theprintspace-fast-style-transfer/content/' \
     --content-weight 1.5e1 \
     --checkpoint-iterations 1 \
-    --batch-size 2 \
+    --batch-size 4 \
     --epochs 1 \
     --no-gpu \
-    --affine 
+    --affine \
+    --affine-weight 5e2
 

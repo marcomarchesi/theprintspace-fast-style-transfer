@@ -95,20 +95,18 @@ def main():
         assert os.path.exists(args.dir)
         files = list_files(args.dir)
         batch_size = args.batch_size
-        num_samples = int(len(files) / batch_size) + 1
-        laplacian_shape = (num_samples, 1623076)
+        # num_samples = int(len(files) / batch_size) + 1
+        laplacian_shape = (1, 1623076)
         # laplacian_shape = (len(files), 1623076)
-        with h5py.File('./data/laplacian.h5', 'w') as hf:
-            hf.create_dataset("laplacian_img", laplacian_shape, np.float32)
-            current_sample = 0
-            for i in tqdm(range(len(files))):
-                if i % batch_size == 0:
-                    src = os.path.join(args.dir, files[i])
-                    value = calculate_laplacian(src)
-                    # print(value.shape)
-                    # return
-                    hf["laplacian_img"][current_sample] = value
-                    current_sample += 1
+        for i in tqdm(range(len(files))):
+            if i % batch_size > -1 and i % batch_size < 4:
+                filename = files[i] + '.h5'
+                hf = h5py.File('./data/laplacian/' + filename, 'w')
+                hf.create_dataset("laplacian_img", laplacian_shape, np.float32)
+                src = os.path.join(args.dir, files[i])
+                value = calculate_laplacian(src)
+                hf["laplacian_img"][0] = value
+                hf.close()
         return
     if args.mode == 'split':
         laplacian_hf = h5py.File('./data/laplacian.h5', 'r')
