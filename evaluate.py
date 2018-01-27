@@ -230,6 +230,8 @@ def ffwd_different_dimensions(in_path, out_path, checkpoint_dir,
         print('Processing images of shape %s' % shape)
         ffwd(in_path_of_shape[shape], out_path_of_shape[shape], 
             checkpoint_dir, device_t, batch_size)
+        timeElapsed=datetime.now()-startTime 
+        print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
 
 def build_parser():
     parser = ArgumentParser()
@@ -299,5 +301,5 @@ def main():
 
 if __name__ == '__main__':
     main()
-    timeElapsed=datetime.now()-startTime 
-    print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
+    # timeElapsed=datetime.now()-startTime 
+    # print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
