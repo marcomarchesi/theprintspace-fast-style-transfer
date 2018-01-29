@@ -14,7 +14,8 @@ from PIL import Image
 # add laplacian
 from closed_form_matting import getLaplacian, getLaplacianAsThree
 
-STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
+STYLE_LAYERS = ('relu1_2', 'relu2_2', 'relu3_3', 'relu4_3', 'relu5_3') # blurred bw
+# STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
 CONTENT_LAYER = 'relu4_2'
 DEVICES = '/gpu:0'
 
