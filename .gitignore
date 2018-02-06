@@ -6,6 +6,7 @@ content/
 
 checkpoint/
 checkpoint*
+input_*
 input/
 output/
 logs/
