@@ -192,7 +192,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         net = vgg.net(vgg_path, preds_pre)
 
         # affine loss
-        affine_loss = tf.constant(0.0)
+        #affine_loss = tf.constant(0.0)
         if affine:
             affine_loss = get_affine_loss_plus(preds_pre, X_MM, affine_weight)
 
@@ -259,13 +259,13 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 tf.summary.scalar('content_loss', content_loss)
                 tf.summary.scalar('style_loss', style_loss)
                 tf.summary.scalar('tv_loss', tv_loss)
-                if affine:
-                    tf.summary.scalar('affine_loss', affine_loss)
+                #if affine:
+                #    tf.summary.scalar('affine_loss', affine_loss)
                 if contrast:
                     tf.summary.scalar('contrast_loss', contrast_loss)
                 if gradient:
                     tf.summary.scalar('gradient_loss', gradient_loss)
-                tf.summary.scalar('total_loss', loss)
+                #tf.summary.scalar('total_loss', loss)
 
                 tf.summary.image('batch', X_content)
                 tf.summary.image('predicted', preds_pre)
@@ -314,14 +314,11 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                    # read images from hdf5
                    X_batch[j] = get_img_from_hdf5(index, hf)
                    # X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
-
                    if affine:
-                    if j > -1 and j < 4:
-                        print(j)
-                        print(img_filename)
-                        filepath = './data/laplacian/' + img_filename + '.h5'
+                    if j == 0:
+                        filepath = './data/laplacian/' + str(laplacian_index) + '.h5'
                         laplacian_hf = h5py.File(filepath, 'r')
-                        M[j] = get_laplacian_from_hdf5(0, laplacian_hf)
+                        M[0] = get_laplacian_from_hdf5(0, laplacian_hf)
                         laplacian_hf.close()
 
                    index += 1
@@ -363,7 +360,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 global_step = (epoch + 1) * iterations
                 # print("Global Step: %i" % global_step)
                 if logs:
-                    summary, tup = sess.run([merged, to_get], feed_dict = test_feed_dict)
+                    summary, tup = sess.run([merged, to_get], feed_dict = feed_dict)
                     summary_writer.add_summary(summary, global_step)
                 else:
                     tup = sess.run(to_get, feed_dict = test_feed_dict)
