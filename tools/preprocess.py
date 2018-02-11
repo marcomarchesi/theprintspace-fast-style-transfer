@@ -24,9 +24,9 @@ def build_parser():
     parser.add_argument('--size', dest='size', type=int,
                             default=100)
 
-    parser.add_argument('--hdf5', action='store_true', default=False)
-    parser.add_argument('--crop', action='store_true', default=False)
-    parser.add_argument('--laplacian', action='store_true', default=False)
+    # parser.add_argument('--hdf5', action='store_true', default=False)
+    # parser.add_argument('--crop', action='store_true', default=False)
+    # parser.add_argument('--laplacian', action='store_true', default=False)
     parser.add_argument('--mode', type=str)
     parser.add_argument('--batch_size', type=int, default=30)
     return parser
