@@ -17,7 +17,7 @@ CONTRAST_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
 AFFINE_WEIGHT = 1e2
-GRADIENT_WEIGHT = 7.5e0
+LUMA_WEIGHT = 1e0
 
 LEARNING_RATE = 1e-3
 NUM_EPOCHS = 2
@@ -80,13 +80,13 @@ def build_parser():
                         help='path to VGG19 network (default %(default)s)',
                         metavar='VGG_PATH', default=VGG_PATH)
 
-    parser.add_argument('--gradient-weight', type=float,
-                        dest='gradient_weight',
-                        help='gradient weight (default %(default)s)',
-                        metavar='GRADIENT_WEIGHT', default=GRADIENT_WEIGHT)
+    parser.add_argument('--luma-weight', type=float,
+                        dest='luma_weight',
+                        help='luma weight (default %(default)s)',
+                        metavar='LUMA_WEIGHT', default=LUMA_WEIGHT)
 
-    parser.add_argument('--gradient', dest='gradient', action='store_true',
-                        help='gradient loss enabled', default=False)
+    parser.add_argument('--luma', dest='luma', action='store_true',
+                        help='luma loss enabled', default=False)
 
     parser.add_argument('--content-weight', type=float,
                         dest='content_weight',
@@ -148,7 +148,7 @@ def check_opts(opts):
     assert opts.content_weight >= 0
     assert opts.style_weight >= 0
     assert opts.contrast_weight >= 0
-    assert opts.gradient_weight >= 0
+    assert opts.luma_weight >= 0
     assert opts.tv_weight >= 0
     assert opts.learning_rate >= 0
     assert opts.num_examples >= 0
@@ -181,7 +181,7 @@ def main():
         "no_gpu":options.no_gpu,
         "logs":options.logs,
         "affine":options.affine,
-        "gradient":options.gradient,
+        "luma":options.luma,
         "contrast":options.contrast,
         "multiple_style_images":options.multiple_style_images
     }
@@ -198,9 +198,9 @@ def main():
         options.content_weight,
         options.style_weight,
         options.contrast_weight,
-        options.gradient_weight,
         options.tv_weight,
         options.affine_weight,
+        options.luma_weight,
         options.vgg_path
     ]
 
@@ -212,9 +212,9 @@ def main():
 
     for preds, losses, i, epoch in optimize(*args, **kwargs):
 
-        if options.gradient:
-            style_loss, content_loss, tv_loss, contrast_loss, affine_loss, gradient_loss, loss = losses
-            to_print = (style_loss, content_loss, tv_loss, contrast_loss, affine_loss, gradient_loss)
+        if options.luma:
+            style_loss, content_loss, tv_loss, contrast_loss, affine_loss, luma_loss, loss = losses
+            to_print = (style_loss, content_loss, tv_loss, contrast_loss, affine_loss, luma_loss)
         elif options.affine:
             style_loss, content_loss, tv_loss, contrast_loss, affine_loss, loss = losses
             to_print = (style_loss, content_loss, tv_loss, contrast_loss, affine_loss)

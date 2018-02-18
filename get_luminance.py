@@ -19,28 +19,46 @@ def gray2rgb(gray):
     rgb[:, :, 2] = rgb[:, :, 1] = rgb[:, :, 0] = gray
     return rgb
 
-# get the images
-content = np.asarray(Image.open(args.content))
-stylized = np.asarray(Image.open(args.stylized))
+def get_luma_loss(content, preds, weight):
+    # loss_luma = 0.0
+    # convert content
+    # grayscale_input = rgb2gray(content)
+    # rgb_input = gray2rgb(grayscale_input)
+    # yuv_input = np.array(Image.fromarray(rgb_input.astype(np.uint8)).convert('YCbCr'))
+    yuv_content = np.array(Image.fromarray(content.astype(np.uint8)).convert('YCbCr'))
+    yuv_preds = np.array(Image.fromarray(preds.astype(np.uint8)).convert('YCbCr'))
+    return tf.reduce_mean(tf.squared_difference(yuv_content[..., 0], yuv_preds[..., 0])) * weight
 
 
-# convert
-grayscale_input = rgb2gray(content)
-rgb_input = gray2rgb(grayscale_input)
-yuv_input = np.array(Image.fromarray(rgb_input.astype(np.uint8)).convert('YCbCr'))
+def main():
+    # get the images
+    content = np.asarray(Image.open(args.content))
+    stylized = np.asarray(Image.open(args.stylized))
 
-yuv_content = np.array(Image.fromarray(stylized.astype(np.uint8)).convert('YCbCr'))
 
-# combine
-w, h, _ = content.shape
-combined_yuv = np.empty((w, h, 3), dtype=np.uint8)
-combined_yuv[..., 0] = yuv_input[..., 0] * 0.5 + yuv_content[..., 0] * 0.5
-combined_yuv[..., 1] = yuv_content[..., 1]
-combined_yuv[..., 2] = yuv_content[..., 2]
+    # convert
+    grayscale_input = rgb2gray(content)
+    rgb_input = gray2rgb(grayscale_input)
+    yuv_input = np.array(Image.fromarray(rgb_input.astype(np.uint8)).convert('YCbCr'))
 
-# save combined image
-img_out = Image.fromarray(combined_yuv, 'YCbCr').convert('RGB')
-img_out.save(args.output)
+    yuv_content = np.array(Image.fromarray(stylized.astype(np.uint8)).convert('YCbCr'))
+
+    # combine
+    w, h, _ = content.shape
+    combined_yuv = np.empty((w, h, 3), dtype=np.uint8)
+    combined_yuv[..., 0] = yuv_input[..., 0] * 0.5 + yuv_content[..., 0] * 0.5
+    combined_yuv[..., 1] = yuv_content[..., 1]
+    combined_yuv[..., 2] = yuv_content[..., 2]
+
+    # save combined image
+    img_out = Image.fromarray(combined_yuv, 'YCbCr').convert('RGB')
+    img_out.save(args.output)
+
+
+if __name__ == '__main__':
+    main()
+
+
 
 
 

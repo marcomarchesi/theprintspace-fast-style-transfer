@@ -4,6 +4,7 @@ import vgg, pdb, time
 import tensorflow as tf, numpy as np, os
 import transform
 from utils import get_img, list_abs_files, get_img_from_hdf5, get_laplacian_from_hdf5, num_files
+from get_luminance import get_luma_loss
 import random
 from scipy import ndimage
 from random import randint
@@ -52,16 +53,16 @@ def sobel(img_array):
 
     return col
 
-def grad_image_loss(content, image, weight):
-    # get_gradient(image)
-    # return tf.reduce_mean(tf.squared_difference(content, image)) * weight
-    return tf.reduce_mean(tf.squared_difference(tf.image.total_variation(content), tf.image.total_variation(image))) * weight
+# def grad_image_loss(content, image, weight):
+#     # get_gradient(image)
+#     # return tf.reduce_mean(tf.squared_difference(content, image)) * weight
+#     return tf.reduce_mean(tf.squared_difference(tf.image.total_variation(content), tf.image.total_variation(image))) * weight
 
-def get_gradient(img_array):
-    '''
-    calculate gradient of batch style_images
-    '''
-    return tf.image.total_variation(img_array)
+# def get_gradient(img_array):
+#     '''
+#     calculate gradient of batch style_images
+#     '''
+#     return tf.image.total_variation(img_array)
 
 def get_affine_loss_plus(output, MM, weight):
     loss_affine = 0.0
@@ -73,21 +74,25 @@ def get_affine_loss_plus(output, MM, weight):
 
     return loss_affine * weight
 
+# def get_luma_loss(content, preds, weight):
+#     loss_luma = 0.0
 
-def get_affine_loss(output, batch_size, MM, weight):
-    loss_affine = 0.0
-    for i in range(batch_size):
-        _M = tf.SparseTensor(laplacian_indices, MM[i], laplacian_shape)
-        output_t = output[0] / 255.
-        for Vc in tf.unstack(output_t, axis=-1):
-            Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
-            ravel_0 = tf.expand_dims(Vc_ravel, 0)
-            ravel_0 = tf.cast(ravel_0, tf.float32)
-            ravel_1 = tf.expand_dims(Vc_ravel, -1)
-            ravel_1 = tf.cast(ravel_1, tf.float32)
-            loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
 
-    return tf.reduce_mean(loss_affine * weight)
+
+# def get_affine_loss(output, batch_size, MM, weight):
+#     loss_affine = 0.0
+#     for i in range(batch_size):
+#         _M = tf.SparseTensor(laplacian_indices, MM[i], laplacian_shape)
+#         output_t = output[0] / 255.
+#         for Vc in tf.unstack(output_t, axis=-1):
+#             Vc_ravel = tf.reshape(tf.transpose(Vc), [-1])
+#             ravel_0 = tf.expand_dims(Vc_ravel, 0)
+#             ravel_0 = tf.cast(ravel_0, tf.float32)
+#             ravel_1 = tf.expand_dims(Vc_ravel, -1)
+#             ravel_1 = tf.cast(ravel_1, tf.float32)
+#             loss_affine += tf.matmul(ravel_0, tf.sparse_tensor_dense_matmul(_M, ravel_1))
+
+#     return tf.reduce_mean(loss_affine * weight)
 
 
 def show_features(features, image):
@@ -103,11 +108,11 @@ def show_features(features, image):
     return Image.fromarray(np.uint8(arr[10]))
 
 # np arr, np arr
-def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight, gradient_weight,
+def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight, luma_weight,
              tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
              learning_rate=1e-3, debug=False, no_gpu=False, logs=False, 
-             affine=False, gradient=False, contrast=False, 
+             affine=False, luma=False, contrast=False, 
              multiple_style_images=False, num_examples=1000):
 
 
@@ -161,9 +166,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         X_contrast = tf.placeholder(tf.float32, shape=batch_shape, name="X_contrast")
         X_pre_contrast = vgg.preprocess(X_contrast)
 
-        # for gradient loss
-        # X_gradient = tf.placeholder(tf.float32, shape=batch_shape, name="X_gradient")
-        # X_pre_gradient = vgg.preprocess(X_gradient)
 
         # for affine loss
         X_MM = tf.placeholder(tf.float32, name="X_MM")
@@ -177,9 +179,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         contrast_net = vgg.net(vgg_path, X_pre_contrast)
         contrast_features[CONTENT_LAYER] = contrast_net[CONTENT_LAYER]
 
-        # gradient_features = {}
-        # gradient_net = vgg.net(vgg_path, X_pre_gradient)
-        # gradient_features[CONTENT_LAYER] = gradient_net[CONTENT_LAYER]
 
         if slow:
             preds = tf.Variable(
@@ -193,9 +192,11 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         net = vgg.net(vgg_path, preds_pre)
 
         # affine loss
-        #affine_loss = tf.constant(0.0)
         if affine:
             affine_loss = get_affine_loss_plus(preds_pre, X_MM, affine_weight)
+
+        if luma:
+            luma_loss = get_luma_loss(X_content, preds, luma_weight)
 
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
@@ -236,17 +237,13 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # M = np.zeros(batch_laplacian_shape, dtype=np.float32)
         M = np.zeros(batch_laplacian_shape, dtype=np.float32)
 
-        print("M")
-        print(M.shape)
-
         # DOES THIS POSITION COULD AFFECT THE TRAINING?  
         X_batch = np.zeros(batch_shape, dtype=np.float32)
 
 
         # loss contributions
-        if gradient:
-            gradient_loss = grad_image_loss(X_content, preds, gradient_weight)
-            loss = content_loss + style_loss + tv_loss + contrast_loss + affine_loss + gradient_loss
+        if luma:
+            loss = content_loss + style_loss + tv_loss + contrast_loss + affine_loss + luma_loss
         elif affine:
             loss = content_loss + style_loss + tv_loss + contrast_loss + affine_loss
         elif contrast:
@@ -264,8 +261,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 #    tf.summary.scalar('affine_loss', affine_loss)
                 if contrast:
                     tf.summary.scalar('contrast_loss', contrast_loss)
-                if gradient:
-                    tf.summary.scalar('gradient_loss', gradient_loss)
+                if luma:
+                    tf.summary.scalar('luma_loss', luma_loss)
                 #tf.summary.scalar('total_loss', loss)
 
                 tf.summary.image('batch', X_content)
@@ -344,8 +341,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                        style_image:style_pre, X_content:X_batch
                     }
 
-                if gradient:
-                    to_get = [style_loss, content_loss, tv_loss, contrast_loss, affine_loss, gradient_loss, loss, preds]
+                if luma:
+                    to_get = [style_loss, content_loss, tv_loss, contrast_loss, affine_loss, luma_loss, loss, preds]
                 elif affine:
                     to_get = [style_loss, content_loss, tv_loss, contrast_loss, affine_loss, loss, preds]
                 elif contrast:
@@ -372,9 +369,9 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 should_print = is_print_iter or is_last
                 if should_print:
 
-                    if gradient:
-                        _style_loss,_content_loss,_tv_loss, _contrast_loss, _affine_loss, _gradient_loss, _loss,_preds = tup
-                        losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _affine_loss, _gradient_loss, _loss)
+                    if luma:
+                        _style_loss,_content_loss,_tv_loss, _contrast_loss, _affine_loss, _luma_loss, _loss,_preds = tup
+                        losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _affine_loss, _luma_loss, _loss)
                     elif affine:
                         _style_loss,_content_loss,_tv_loss, _contrast_loss, _affine_loss, _loss,_preds = tup
                         losses = (_style_loss, _content_loss, _tv_loss, _contrast_loss, _affine_loss, _loss)
