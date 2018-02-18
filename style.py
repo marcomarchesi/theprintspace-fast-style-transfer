@@ -12,21 +12,22 @@ import json
 #for copying
 from shutil import copyfile
 
-CONTENT_WEIGHT = 7.5e0
+CONTENT_WEIGHT = 1.5e1
 CONTRAST_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
-AFFINE_WEIGHT = 1e4
+AFFINE_WEIGHT = 1e2
 GRADIENT_WEIGHT = 7.5e0
 
 LEARNING_RATE = 1e-3
 NUM_EPOCHS = 2
 NUM_EXAMPLES = 1000
 CHECKPOINT_DIR = 'checkpoints'
-CHECKPOINT_ITERATIONS = 2000
+CHECKPOINT_ITERATIONS = 1000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
-TRAIN_PATH = 'data/train2014'
-BATCH_SIZE = 1
+TRAIN_PATH = 'data/train2014_256x256'
+#TRAIN_PATH = 'data/celebs_80k'
+BATCH_SIZE = 30
 FRAC_GPU = 1
 
 def build_parser():
@@ -79,6 +80,14 @@ def build_parser():
                         help='path to VGG19 network (default %(default)s)',
                         metavar='VGG_PATH', default=VGG_PATH)
 
+    parser.add_argument('--gradient-weight', type=float,
+                        dest='gradient_weight',
+                        help='gradient weight (default %(default)s)',
+                        metavar='GRADIENT_WEIGHT', default=GRADIENT_WEIGHT)
+
+    parser.add_argument('--gradient', dest='gradient', action='store_true',
+                        help='gradient loss enabled', default=False)
+
     parser.add_argument('--content-weight', type=float,
                         dest='content_weight',
                         help='content weight (default %(default)s)',
@@ -91,14 +100,6 @@ def build_parser():
 
     parser.add_argument('--contrast', dest='contrast', action='store_true',
                         help='contrast loss enabled', default=False)
-
-    parser.add_argument('--gradient-weight', type=float,
-                        dest='gradient_weight',
-                        help='gradient weight (default %(default)s)',
-                        metavar='GRADIENT_WEIGHT', default=GRADIENT_WEIGHT)
-
-    parser.add_argument('--gradient', dest='gradient', action='store_true',
-                        help='gradient loss enabled', default=False)
     
     parser.add_argument('--style-weight', type=float,
                         dest='style_weight',
@@ -225,7 +226,7 @@ def main():
             to_print = (style_loss, content_loss, tv_loss) 
 
         print('Epoch %d, Iteration: %d, Loss: %s' % (epoch, i, loss))
-        # print('style: %s, content:%s, tv: %s, contrast: %s' % to_print)
+        # print('style: %s, content:%s, tv: %s, contrast: %s, gradient: %s' % to_print)
 
         if options.test:
             assert options.test_dir != False

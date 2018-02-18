@@ -14,6 +14,7 @@ from PIL import Image
 # add laplacian
 from closed_form_matting import getLaplacian, getLaplacianAsThree
 
+#STYLE_LAYERS = ('relu1_2', 'relu2_2', 'relu3_3')
 STYLE_LAYERS = ('relu1_2', 'relu2_2', 'relu3_3', 'relu4_3', 'relu5_3') # blurred bw
 # STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
 CONTENT_LAYER = 'relu4_2'
@@ -313,7 +314,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                    #print(j)
                    # read images from hdf5
                    X_batch[j] = get_img_from_hdf5(index, hf)
-                   # X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
+                   #X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
                    if affine:
                     if j == 0:
                         filepath = './data/laplacian/' + str(laplacian_index) + '.h5'
@@ -363,7 +364,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                     summary, tup = sess.run([merged, to_get], feed_dict = feed_dict)
                     summary_writer.add_summary(summary, global_step)
                 else:
-                    tup = sess.run(to_get, feed_dict = test_feed_dict)
+                    tup = sess.run(to_get, feed_dict = feed_dict)
 
 
                 is_print_iter = int(iterations) % print_iterations == 0
