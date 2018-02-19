@@ -4,7 +4,6 @@ import vgg, pdb, time
 import tensorflow as tf, numpy as np, os
 import transform
 from utils import get_img, list_abs_files, get_img_from_hdf5, get_laplacian_from_hdf5, num_files
-from get_luminance import get_luma_loss
 import random
 from scipy import ndimage
 from random import randint
@@ -74,9 +73,15 @@ def get_affine_loss_plus(output, MM, weight):
 
     return loss_affine * weight
 
-# def get_luma_loss(content, preds, weight):
-#     loss_luma = 0.0
-
+def get_luma_loss(content, preds, weight):
+    # loss_luma = 0.0
+    # convert content
+    # grayscale_input = rgb2gray(content)
+    # rgb_input = gray2rgb(grayscale_input)
+    # yuv_input = np.array(Image.fromarray(rgb_input.astype(np.uint8)).convert('YCbCr'))
+    # yuv_content = np.array(Image.fromarray(content.astype(np.uint8)).convert('YCbCr'))
+    # yuv_preds = np.array(Image.fromarray(preds.astype(np.uint8)).convert('YCbCr'))
+    return tf.reduce_mean(tf.squared_difference(content[..., 0], preds[..., 0])) * weight
 
 
 # def get_affine_loss(output, batch_size, MM, weight):
@@ -169,6 +174,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
         # for affine loss
         X_MM = tf.placeholder(tf.float32, name="X_MM")
+
+        # for luma loss
+        X_luma_content = tf.placeholder(tf.float32, shape=batch_shape, name="X_luma_content")
+        X_luma_preds = tf.placeholder(tf.float32, shape=batch_shape, name="X_luma_preds")
  
         # precompute content features
         content_features = {}
@@ -180,14 +189,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         contrast_features[CONTENT_LAYER] = contrast_net[CONTENT_LAYER]
 
 
-        if slow:
-            preds = tf.Variable(
-                tf.random_normal(X_content.get_shape()) * 0.256
-            )
-            preds_pre = preds
-        else:
-            preds = transform.net(X_content/255.0)
-            preds_pre = vgg.preprocess(preds)
+        preds = transform.net(X_content/255.0)
+        preds_pre = vgg.preprocess(preds)
 
         net = vgg.net(vgg_path, preds_pre)
 
@@ -196,7 +199,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
             affine_loss = get_affine_loss_plus(preds_pre, X_MM, affine_weight)
 
         if luma:
-            luma_loss = get_luma_loss(X_content, preds, luma_weight)
+            luma_loss = get_luma_loss(X_luma_content, X_luma_preds, luma_weight)
 
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
@@ -239,6 +242,10 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
 
         # DOES THIS POSITION COULD AFFECT THE TRAINING?  
         X_batch = np.zeros(batch_shape, dtype=np.float32)
+
+        # for luma loss
+        yuv_content = np.zeros(batch_shape, dtype=np.float32)
+        yuv_preds = np.zeros(batch_shape, dtype=np.float32)
 
 
         # loss contributions
@@ -305,6 +312,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 curr = iterations * batch_size
                 step = curr + batch_size
 
+                _preds_pre = sess.run(preds_pre)
+
                 for j, img_p in enumerate(content_targets[curr:step]):
                    # print(img_p)
                    img_filename = os.path.basename(img_p)
@@ -312,12 +321,16 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                    # read images from hdf5
                    X_batch[j] = get_img_from_hdf5(index, hf)
                    #X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
+                   yuv_content[j] = np.array(Image.fromarray(X_batch[j].astype(np.uint8)).convert('YCbCr'))
+                   yuv_preds[j] = np.array(Image.fromarray(preds_pre[j].astype(np.uint8)).convert('YCbCr'))
+
                    if affine:
                     if j == 0:
                         filepath = './data/laplacian/' + str(laplacian_index) + '.h5'
                         laplacian_hf = h5py.File(filepath, 'r')
                         M[0] = get_laplacian_from_hdf5(0, laplacian_hf)
                         laplacian_hf.close()
+
 
                    index += 1
                    
@@ -328,7 +341,12 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 assert X_batch.shape[0] == batch_size
 
                 # TODO add condition for gradient
-                if affine:
+                if luma:
+                    feed_dict = {
+                       style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), 
+                       X_MM: M, X_luma_content: yuv_content, X_luma_preds: yuv_preds
+                    }
+                elif affine:
                     feed_dict = {
                        style_image:style_pre, X_content:X_batch, X_contrast: sobel(X_batch), X_MM: M
                     }

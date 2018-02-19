@@ -25,9 +25,9 @@ def get_luma_loss(content, preds, weight):
     # grayscale_input = rgb2gray(content)
     # rgb_input = gray2rgb(grayscale_input)
     # yuv_input = np.array(Image.fromarray(rgb_input.astype(np.uint8)).convert('YCbCr'))
-    yuv_content = np.array(Image.fromarray(content.astype(np.uint8)).convert('YCbCr'))
-    yuv_preds = np.array(Image.fromarray(preds.astype(np.uint8)).convert('YCbCr'))
-    return tf.reduce_mean(tf.squared_difference(yuv_content[..., 0], yuv_preds[..., 0])) * weight
+    # yuv_content = np.array(Image.fromarray(content.astype(np.uint8)).convert('YCbCr'))
+    # yuv_preds = np.array(Image.fromarray(preds.astype(np.uint8)).convert('YCbCr'))
+    return tf.reduce_mean(tf.squared_difference(content[..., 0], preds[..., 0])) * weight
 
 
 def main():
