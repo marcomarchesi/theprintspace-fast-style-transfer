@@ -23,6 +23,8 @@ DEVICES = '/gpu:0'
 laplacian_shape = (65536, 65536)
 laplacian_indices = np.load('./laplacian_data/indices.npy')
 
+
+
 # hfd5
 hf = h5py.File('./data/data.h5', 'r')
 # laplacian_hf_size = 82783
@@ -46,6 +48,7 @@ def sobel(img_array):
 
     return col
 
+
 def get_affine_loss_plus(output, MM, weight):
     loss_affine = 0.0
     _M = tf.SparseTensor(laplacian_indices, MM[0], laplacian_shape)
@@ -61,28 +64,15 @@ def get_luma_loss(content, preds, weight):
          [0.58700, -0.33126, -0.41869],
          [ 0.11400, 0.50000, -0.08131]])
 
-    _loss = 0.0
-
     for i in range(content.shape[0]):
         yuv_content_mat = tf.reshape(content[i], shape=(256*256, 3))
         yuv_content = tf.matmul(yuv_content_mat, rgb2yuv_m)
         yuv_preds_mat = tf.reshape(preds[i], shape=(256*256, 3))
         yuv_preds = tf.matmul(yuv_preds_mat, rgb2yuv_m)
 
-        # go back to 3d
-        yuv_content = tf.reshape(yuv_content, shape=(256, 256, 3))
-        yuv_preds = tf.reshape(yuv_preds, shape=(256, 256, 3))
 
-        # get the Y (luma) channel
-        y_content = tf.unstack(yuv_content, axis=2)
-        y_preds = tf.unstack(yuv_preds, axis=2)
+    return tf.reduce_mean(tf.squared_difference(content[..., 0], preds[..., 0])) * weight
 
-        y_content = tf.subtract(y_content, tf.constant(179.45477266423404))
-        y_preds = tf.subtract(y_preds, tf.constant(179.45477266423404))
-
-        _loss += tf.reduce_mean(tf.squared_difference(y_content, y_preds)) * weight
-
-    return _loss
 
 
 
@@ -99,11 +89,11 @@ def show_features(features, image):
     return Image.fromarray(np.uint8(arr[10]))
 
 # np arr, np arr
-def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight,
-             tv_weight, affine_weight, luma_weight, vgg_path, epochs=2, print_iterations=1,
+def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight, luma_weight,
+             tv_weight, affine_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
              learning_rate=1e-3, debug=False, no_gpu=False, logs=False, 
-             affine=False, gradient=False, contrast=False, luma=False,
+             affine=False, luma=False, contrast=False, 
              multiple_style_images=False, num_examples=1000):
 
 
@@ -157,8 +147,11 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         X_contrast = tf.placeholder(tf.float32, shape=batch_shape, name="X_contrast")
         X_pre_contrast = vgg.preprocess(X_contrast)
 
+
         # for affine loss
         X_MM = tf.placeholder(tf.float32, name="X_MM")
+
+
  
         # precompute content features
         content_features = {}
@@ -169,15 +162,17 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         contrast_net = vgg.net(vgg_path, X_pre_contrast)
         contrast_features[CONTENT_LAYER] = contrast_net[CONTENT_LAYER]
 
+
         preds = transform.net(X_content/255.0)
         preds_pre = vgg.preprocess(preds)
 
         net = vgg.net(vgg_path, preds_pre)
 
         # affine loss
-        #affine_loss = tf.constant(0.0)
         if affine:
             affine_loss = get_affine_loss_plus(preds_pre, X_MM, affine_weight)
+
+        # luma loss
         if luma:
             affine_loss = get_affine_loss_plus(preds_pre, X_MM, affine_weight)
             luma_loss = get_luma_loss(X_content, preds, luma_weight)
@@ -221,8 +216,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         # M = np.zeros(batch_laplacian_shape, dtype=np.float32)
         M = np.zeros(batch_laplacian_shape, dtype=np.float32)
 
-
-
         # DOES THIS POSITION COULD AFFECT THE TRAINING?  
         X_batch = np.zeros(batch_shape, dtype=np.float32)
 
@@ -247,8 +240,8 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 #    tf.summary.scalar('affine_loss', affine_loss)
                 if contrast:
                     tf.summary.scalar('contrast_loss', contrast_loss)
-                if gradient:
-                    tf.summary.scalar('gradient_loss', gradient_loss)
+                if luma:
+                    tf.summary.scalar('luma_loss', luma_loss)
                 #tf.summary.scalar('total_loss', loss)
 
                 tf.summary.image('batch', X_content)
@@ -291,19 +284,23 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
                 curr = iterations * batch_size
                 step = curr + batch_size
 
+                _preds_pre = sess.run(preds_pre)
+
                 for j, img_p in enumerate(content_targets[curr:step]):
                    # print(img_p)
                    img_filename = os.path.basename(img_p)
                    #print(j)
                    # read images from hdf5
-                   #X_batch[j] = get_img_from_hdf5(index, hf)
+                   # X_batch[j] = get_img_from_hdf5(index, hf)
                    X_batch[j] = get_img(img_p, (256,256,3)).astype(np.float32)
+
                    if affine:
                     if j == 0:
                         filepath = './data/laplacian/' + str(laplacian_index) + '.h5'
                         laplacian_hf = h5py.File(filepath, 'r')
                         M[0] = get_laplacian_from_hdf5(0, laplacian_hf)
                         laplacian_hf.close()
+
 
                    index += 1
                    
