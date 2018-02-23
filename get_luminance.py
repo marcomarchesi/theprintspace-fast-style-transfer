@@ -1,11 +1,21 @@
 from PIL import Image
 from argparse import ArgumentParser
 import numpy as np
+import os
+from tqdm import tqdm
+
+class Range(object):
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+    def __eq__(self, other):
+        return self.start <= other <= self.end
 
 parser = ArgumentParser()
 parser.add_argument("--content", dest="content")
 parser.add_argument("--stylized", dest="stylized")
 parser.add_argument("--output", dest="output")
+parser.add_argument("--ratio", dest="ratio", type=float, choices=[Range(0.0, 1.0)], default=0.5)
 
 args = parser.parse_args()
 
@@ -45,38 +55,36 @@ def gray2rgb(gray):
     rgb[:, :, 2] = rgb[:, :, 1] = rgb[:, :, 0] = gray
     return rgb
 
-def main():
-    # get the images
-    content = np.asarray(Image.open(args.content))
-    stylized = np.asarray(Image.open(args.stylized))
-
+def convert(filename, ratio):
+    content_img = Image.open(os.path.join(args.content, filename))
+    c_w, c_h = content_img.size
+    content_array = np.asarray(content_img)
+    stylized_img = Image.open(os.path.join(args.stylized, filename))
+    stylized_img = stylized_img.resize((c_w, c_h), Image.ANTIALIAS)
+    stylized_array = np.asarray(stylized_img)
 
     # convert
-    grayscale_input = rgb2gray(content)
-    rgb_input = gray2rgb(grayscale_input)
-    yuv_input = np.array(Image.fromarray(rgb_input.astype(np.uint8)).convert('YCbCr'))
-    yuv_content = np.array(Image.fromarray(stylized.astype(np.uint8)).convert('YCbCr'))
-    # yuv_input = RGB2YUV(np.array(Image.fromarray(content.astype(np.uint8))))
-    # yuv_content = RGB2YUV(np.array(Image.fromarray(stylized.astype(np.uint8))))
-    
+    yuv_input = np.array(Image.fromarray(content_array.astype(np.uint8)).convert('YCbCr'))
+    yuv_content = np.array(Image.fromarray(stylized_array.astype(np.uint8)).convert('YCbCr'))
+
 
     # combine
-    w, h, _ = content.shape
+    w, h, _ = content_array.shape
     combined_yuv = np.empty((w, h, 3), dtype=np.uint8)
-    combined_yuv[..., 0] = yuv_input[..., 0] * 0.5 + yuv_content[..., 0] * 0.5
+    combined_yuv[..., 0] = yuv_input[..., 0] * ratio + yuv_content[..., 0] * (1 - ratio)
     combined_yuv[..., 1] = yuv_content[..., 1]
     combined_yuv[..., 2] = yuv_content[..., 2]
 
     # save combined image
     img_out = Image.fromarray(combined_yuv, 'YCbCr').convert('RGB')
-    img_out.save(args.output)
+    img_out.save(os.path.join(args.output, filename))
 
+def main():
+    files = os.listdir(args.content)
+    for file in tqdm(files):
+        if file != ".DS_Store":
+            if os.path.exists(os.path.join(args.stylized, file)):
+                convert(file, args.ratio)
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
