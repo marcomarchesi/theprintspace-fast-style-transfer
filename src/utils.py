@@ -1,8 +1,29 @@
 import scipy.misc, numpy as np, os, sys
 
+import imageio
+
+from PIL import Image
+
+def save_conv(out_path, img, filters):
+    img_array = np.split(img, indices_or_sections=filters, axis=2)
+    
+    for i in range(filters):
+      path, basename = os.path.split(out_path)
+      out_img = img_array[i] 
+      out_img = np.squeeze(out_img)
+      # print(out_img.shape)
+      # print(out_img)
+      basename = str(filters) + "_" + str(i) + "_" + basename
+      filename = os.path.join(path,basename)
+      out = Image.fromarray(out_img, "L")
+      out.save(filename)
+      # scipy.misc.imsave(basename, out_img)
+
 def save_img(out_path, img):
     img = np.clip(img, 0, 255).astype(np.uint8)
-    scipy.misc.imsave(out_path, img)
+    img = np.squeeze(img)
+    # scipy.misc.imsave(out_path, img)
+    imageio.imwrite(out_path, img)
 
 def resize_img(src, size):
     img = scipy.misc.imresize(src, size)

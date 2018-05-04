@@ -11,17 +11,16 @@ import time
 import json
 import subprocess
 import numpy
+from luminance_utils import convert
 
 
-# from smooth_local_affine import smooth_local_affine
-# from PIL import Image
-# import cv2
-
+import cv2
+from PIL import Image
 
 
 
 from datetime import datetime 
-startTime= datetime.now() 
+#startTime= datetime.now() 
 
 BATCH_SIZE = 4
 DEVICE = '/cpu:0'
@@ -200,10 +199,17 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4):
                 # result = Image.fromarray(np.uint8(np.clip(best_ * 255., 0, 255.)))
                 # result.save(path_out)
 
-                # output_ = cv2.bilateralFilter(_preds[j],9,75,75)
-                # save_img(path_out, output_)
+                #output_ = cv2.bilateralFilter(_preds[j],9,150,150)
+                #save_img(path_out, output_)
 
                 save_img(path_out, _preds[j])
+                print("Content is %s " % path_in)
+                print("Stylized is %s " % path_out)
+
+                content_image_name = os.path.splitext(path_in)[1]
+                stylized_image_path = os.path.join('./output', content_image_name)
+
+                convert(path_in, stylized_image_path, path_out)
 
         remaining_in = data_in[num_iters*batch_size:]
         remaining_out = paths_out[num_iters*batch_size:]
@@ -227,7 +233,9 @@ def ffwd_different_dimensions(in_path, out_path, checkpoint_dir,
             in_path_of_shape[shape].append(in_image)
             out_path_of_shape[shape].append(out_image)
     for shape in in_path_of_shape:
+        startTime= datetime.now()
         print('Processing images of shape %s' % shape)
+        print('with path %s' % in_image)
         ffwd(in_path_of_shape[shape], out_path_of_shape[shape], 
             checkpoint_dir, device_t, batch_size)
         timeElapsed=datetime.now()-startTime 
@@ -240,12 +248,12 @@ def build_parser():
                         help='dir or .ckpt file to load checkpoint from',
                         metavar='CHECKPOINT', required=True)
 
-    parser.add_argument('--in-path', type=str,
+    parser.add_argument('--in-path', type=str, default='./input',
                         dest='in_path',help='dir or file to transform',
                         metavar='IN_PATH', required=True)
 
     help_out = 'destination (dir or file) of transformed file or files'
-    parser.add_argument('--out-path', type=str,
+    parser.add_argument('--out-path', type=str, default='./output',
                         dest='out_path', help=help_out, metavar='OUT_PATH',
                         required=True)
 
@@ -259,11 +267,12 @@ def build_parser():
 
     parser.add_argument('--allow-different-dimensions', action='store_true',
                         dest='allow_different_dimensions', 
-                        help='allow different image dimensions')
+                        help='allow different image dimensions', default=True)
 
     parser.add_argument('--smooth-affine', action='store_true',
                         dest='smooth_affine', 
                         help='smooth affine')
+
 
     return parser
 

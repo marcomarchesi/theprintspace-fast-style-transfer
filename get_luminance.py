@@ -83,6 +83,7 @@ def main():
     files = os.listdir(args.content)
     for file in tqdm(files):
         if file != ".DS_Store":
+            print(file)
             if os.path.exists(os.path.join(args.stylized, file)):
                 convert(file, args.ratio)
 

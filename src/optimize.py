@@ -86,17 +86,17 @@ def get_luma_loss(content, preds, weight):
 
 
 
-def show_features(features, image):
-    img = np.expand_dims(np.array(image), axis=0)
-    feed_dict = {
-           style_image:img
-    }
-    blocks = tf.unstack(features, axis=3)
-    filters = []
-    for block in blocks:
-        filters.append(tf.squeeze(block))
-    arr =  sess.run(filters, feed_dict=feed_dict)
-    return Image.fromarray(np.uint8(arr[10]))
+# def show_features(features, image):
+#     img = np.expand_dims(np.array(image), axis=0)
+#     feed_dict = {
+#            style_image:img
+#     }
+#     blocks = tf.unstack(features, axis=3)
+#     filters = []
+#     for block in blocks:
+#         filters.append(tf.squeeze(block))
+#     arr =  sess.run(filters, feed_dict=feed_dict)
+#     return Image.fromarray(np.uint8(arr[10]))
 
 # np arr, np arr
 def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight,

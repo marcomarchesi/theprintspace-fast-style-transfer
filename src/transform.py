@@ -6,6 +6,7 @@ def net(image):
     conv1 = _conv_layer(image, 32, 9, 1)
     conv2 = _conv_layer(conv1, 64, 3, 2)
     conv3 = _conv_layer(conv2, 128, 3, 2)
+    # conv3 = tf.maximum(tf.constant(1.5), conv3)
     resid1 = _residual_block(conv3, 3)
     resid2 = _residual_block(resid1, 3)
     resid3 = _residual_block(resid2, 3)
@@ -16,7 +17,7 @@ def net(image):
     conv_t3 = _conv_layer(conv_t2, 3, 9, 1, relu=False)
     preds = tf.nn.tanh(conv_t3) * 150 + 255./2 
     
-    return preds
+    return preds, conv_t1, conv3
 
 def _conv_layer(net, num_filters, filter_size, strides, relu=True):
     weights_init = _conv_init_vars(net, num_filters, filter_size)
