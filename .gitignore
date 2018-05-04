@@ -8,7 +8,9 @@ checkpoint/
 checkpoint*
 input_*
 input/
+inputs/
 output/
+outputs/
 logs/
 
 #Mac

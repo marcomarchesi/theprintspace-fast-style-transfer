@@ -18,7 +18,6 @@ import cv2
 from PIL import Image
 
 
-
 from datetime import datetime 
 #startTime= datetime.now() 
 
@@ -190,24 +189,13 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4):
 
             for j, path_out in enumerate(curr_batch_out):
 
-                # content_input = img[:, :, ::-1]
-                # content_input = content_input.transpose((2, 0, 1))
-                # input_ = np.ascontiguousarray(content_input, dtype=np.float32) / 255.
-                # _, H, W = np.shape(input_)
-                # output_ = np.ascontiguousarray(_preds[j].transpose((2, 0, 1)), dtype=np.float32) / 255.
-                # best_ = smooth_local_affine(output_, input_, 1e-7, 3, H, W, 5, 1e-1).transpose(1, 2, 0)
-                # result = Image.fromarray(np.uint8(np.clip(best_ * 255., 0, 255.)))
-                # result.save(path_out)
-
-                #output_ = cv2.bilateralFilter(_preds[j],9,150,150)
-                #save_img(path_out, output_)
-
                 save_img(path_out, _preds[j])
                 print("Content is %s " % path_in)
                 print("Stylized is %s " % path_out)
 
-                content_image_name = os.path.splitext(path_in)[1]
-                stylized_image_path = os.path.join('./output', content_image_name)
+                content_image_name = os.path.basename(path_in)
+                stylized_image_path = os.path.dirname(path_out)
+                stylized_image_path = os.path.join(stylized_image_path, content_image_name)
 
                 convert(path_in, stylized_image_path, path_out)
 
