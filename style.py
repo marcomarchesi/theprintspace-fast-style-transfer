@@ -245,6 +245,10 @@ def main():
     ckpt_dir = options.checkpoint_dir
     end_time  = time.time()
     elapsed_time = end_time - start_time
+
+    # final cleanup
+    os.remove(os.path.join(options.checkpoint_dir, "fns.ckpt.meta"))
+
     print("Training complete in %s seconds." % (elapsed_time))
 
 

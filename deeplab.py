@@ -15,8 +15,6 @@ import tensorflow as tf
 from tensorflow.python.platform import gfile
 
 
-MODEL = DeepLabModel('./deeplab/deeplabv3_mnv2_pascal_train_aug/frozen_inference_graph.pb')
-
 
 class DeepLabModel(object):
   """Class to load deeplab model and run inference."""
@@ -123,5 +121,5 @@ def run_segmentation(image_path, output_path):
     result = Image.fromarray(a_array.astype(np.uint8))
     result.save(output_path)
 
-
+MODEL = DeepLabModel('./deeplab/deeplabv3_mnv2_pascal_train_aug/frozen_inference_graph.pb')
 
