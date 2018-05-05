@@ -125,8 +125,20 @@ def best_local_affine(output, input, h, w, epsilon, radius):
 
 	# block, grid, thread
 
+  
+  tx = cuda.threadIdx.x
+    # Block id in a 1D grid
+    ty = cuda.blockIdx.x
+    # Block width, i.e. number of threads per block
+    bw = cuda.blockDim.x
+    # Compute flattened index inside the array
+    pos = tx + ty * bw
+    if pos < an_array.size:  # Check array boundaries
+        an_array[pos] += 1
+
+
 	size = h * w
-	id = block_idx. * block_dim.x + thread_idx.x
+	id = block_idx.x * block_dim.x + thread_idx.x
 
 	if id < size:
 		x = id % w

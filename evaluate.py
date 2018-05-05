@@ -12,6 +12,7 @@ import json
 import subprocess
 import numpy
 from luminance_utils import convert
+from deeplab import run_segmentation
 
 
 import cv2
@@ -190,12 +191,16 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4):
             for j, path_out in enumerate(curr_batch_out):
 
                 save_img(path_out, _preds[j])
-                print("Content is %s " % path_in)
-                print("Stylized is %s " % path_out)
+                # print("Content is %s " % path_in)
+                # print("Stylized is %s " % path_out)
 
                 content_image_name = os.path.basename(path_in)
-                stylized_image_path = os.path.dirname(path_out)
-                stylized_image_path = os.path.join(stylized_image_path, content_image_name)
+                segmented_image_name = "seg_" + content_image_name
+                stylized_image_dir = os.path.dirname(path_out)
+                stylized_image_path = os.path.join(stylized_image_dir, content_image_name)
+                segmented_image_path = os.path.join(stylized_image_dir, segmented_image_name)
+
+                run_segmentation(path_in, segmented_image_path)
 
                 convert(path_in, stylized_image_path, path_out)
 
