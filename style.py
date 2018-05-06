@@ -16,16 +16,16 @@ CONTENT_WEIGHT = 1.5e1
 CONTRAST_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
-AFFINE_WEIGHT = 1e2
-LUMA_WEIGHT = 1e0
+AFFINE_WEIGHT = 5e2
+LUMA_WEIGHT = 1e1
 
 LEARNING_RATE = 1e-3
-NUM_EPOCHS = 2
+NUM_EPOCHS = 3
 NUM_EXAMPLES = 1000
 CHECKPOINT_DIR = 'checkpoints'
 CHECKPOINT_ITERATIONS = 1000
 VGG_PATH = 'data/imagenet-vgg-verydeep-19.mat'
-TRAIN_PATH = 'data/trainWithLaplacian100'
+TRAIN_PATH = 'data/train2014_256x256'
 #TRAIN_PATH = 'data/celebs_80k'
 BATCH_SIZE = 30
 FRAC_GPU = 1
@@ -36,13 +36,9 @@ def build_parser():
                         dest='checkpoint_dir', help='dir to save checkpoint in',
                         metavar='CHECKPOINT_DIR', required=True)
 
-    parser.add_argument('--style-dir', type=str,
-                        dest='style_dir', help='style image path',
-                        metavar='STYLE_DIR', required=True)
-
-    parser.add_argument('--multiple-style-images', dest='multiple_style_images', action='store_true', 
-                        help='using multiple style images', default=False)
-
+    parser.add_argument('--style-image', type=str,
+                        dest='style_image', help='style image path',
+                        metavar='STYLE_IMAGE', required=True)
 
     parser.add_argument('--train-path', type=str,
                         dest='train_path', help='path to training images folder',
@@ -86,7 +82,7 @@ def build_parser():
                         metavar='LUMA_WEIGHT', default=LUMA_WEIGHT)
 
     parser.add_argument('--luma', dest='luma', action='store_true',
-                        help='luma loss enabled', default=False)
+                        help='luma loss enabled', default=True)
 
     parser.add_argument('--content-weight', type=float,
                         dest='content_weight',
@@ -135,7 +131,7 @@ def build_parser():
 
 def check_opts(opts):
     exists(opts.checkpoint_dir, "checkpoint dir not found!")
-    exists(opts.style_dir, "style path not found!")
+    exists(opts.style_image, "style path not found!")
     exists(opts.train_path, "train path not found!")
     if opts.test or opts.test_dir:
         exists(opts.test, "test img not found!")
@@ -164,7 +160,7 @@ def main():
     options = parser.parse_args()
     check_opts(options)
 
-    style_targets = options.style_dir
+    style_target = options.style_image
     if not options.slow:
         content_targets = _get_files(options.train_path)
     elif options.test:
@@ -182,8 +178,7 @@ def main():
         "logs":options.logs,
         "affine":options.affine,
         "luma":options.luma,
-        "contrast":options.contrast,
-        "multiple_style_images":options.multiple_style_images
+        "contrast":options.contrast
     }
 
     if options.slow:
@@ -194,7 +189,7 @@ def main():
 
     args = [
         content_targets,
-        style_targets,
+        style_target,
         options.content_weight,
         options.style_weight,
         options.contrast_weight,
@@ -245,11 +240,10 @@ def main():
     ckpt_dir = options.checkpoint_dir
     end_time  = time.time()
     elapsed_time = end_time - start_time
+    print("Training complete in %s seconds." % (elapsed_time))
 
     # final cleanup
     os.remove(os.path.join(options.checkpoint_dir, "fns.ckpt.meta"))
-
-    print("Training complete in %s seconds." % (elapsed_time))
 
 
 if __name__ == '__main__':

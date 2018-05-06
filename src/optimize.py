@@ -99,7 +99,7 @@ def show_features(features, image):
     return Image.fromarray(np.uint8(arr[10]))
 
 # np arr, np arr
-def optimize(content_targets, style_targets, content_weight, style_weight, contrast_weight,
+def optimize(content_targets, style_target, content_weight, style_weight, contrast_weight,
              tv_weight, affine_weight, luma_weight, vgg_path, epochs=2, print_iterations=1,
              batch_size=4, save_path='saver/fns.ckpt', slow=False,
              learning_rate=1e-3, debug=False, no_gpu=False, logs=False, 
@@ -121,8 +121,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
     style_features = {}
 
     style_images = []
-    for style_target in list_abs_files(style_targets):
-        style_images.append(get_img(style_target))
+    style_images.append(get_img(style_target))
 
     batch_shape = (batch_size,256,256,3)
     style_shape = (1,) + style_images[0].shape
@@ -149,7 +148,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
             features_size = tf.to_float(features.shape[0] * features.shape[1])
             gram = tf.matmul(features, features, adjoint_a=True) / features_size
             style_features[layer] = gram
-        
 
         X_content = tf.placeholder(tf.float32, shape=batch_shape, name="X_content")
         X_pre = vgg.preprocess(X_content)
@@ -181,7 +179,6 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
         if luma:
             affine_loss = get_affine_loss_plus(preds_pre, X_MM, affine_weight)
             luma_loss = get_luma_loss(X_content, preds, luma_weight)
-
 
         content_size = _tensor_size(content_features[CONTENT_LAYER])*batch_size
         assert _tensor_size(content_features[CONTENT_LAYER]) == _tensor_size(net[CONTENT_LAYER])
@@ -258,17 +255,13 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
             summary_writer = tf.summary.FileWriter('./logs',
                                           sess.graph)
 
-
         # overall loss
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-        
 
         # initialize variables
         sess.run(tf.global_variables_initializer())
 
-
         global_step = 0
-
 
         for epoch in range(epochs):
             num_examples = len(content_targets)
@@ -277,14 +270,7 @@ def optimize(content_targets, style_targets, content_weight, style_weight, contr
             laplacian_index = 0
 
             # style image to use
-            if multiple_style_images: 
-                random_item = randint(0, len(style_images))
-                if random_item == len(style_images):
-                    random_item -= 1
-                print("style image no.%i" % random_item)
-                style_pre = np.expand_dims(np.array(style_images[random_item]), axis=0)
-            else:
-                style_pre = np.expand_dims(np.array(style_images[0]), axis=0)
+            style_pre = np.expand_dims(np.array(style_images[0]), axis=0)
                 
             while iterations * batch_size < num_examples:
                 start_time = time.time()
