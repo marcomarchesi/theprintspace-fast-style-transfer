@@ -2,7 +2,10 @@ import scipy.misc, numpy as np, os, sys
 
 import imageio
 
-from PIL import Image
+from PIL import ImageFile, Image
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 
 def save_conv(out_path, img, filters):
     img_array = np.split(img, indices_or_sections=filters, axis=2)
@@ -21,8 +24,11 @@ def save_conv(out_path, img, filters):
 
 def save_img(out_path, img):
     img = np.clip(img, 0, 255).astype(np.uint8)
+    print(img.shape)
     img = np.squeeze(img)
+    print(img.shape)
     # scipy.misc.imsave(out_path, img)
+    print("saving %s" % out_path)
     imageio.imwrite(out_path, img)
 
 def resize_img(src, size):
@@ -44,7 +50,8 @@ def get_laplacian_from_hdf5(index, hf):
   return hf["laplacian_img"][index]
 
 def get_img(src, img_size=False):
-   img = scipy.misc.imread(src, mode='RGB') # misc.imresize(, (256, 256, 3))
+   img = np.asarray(Image.open(src))
+#    img = imageio.imread(src) # misc.imresize(, (256, 256, 3))
    if not (len(img.shape) == 3 and img.shape[2] == 3):
        img = np.dstack((img,img,img))
    if img_size != False:

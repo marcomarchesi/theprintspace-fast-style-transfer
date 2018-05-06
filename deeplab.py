@@ -61,6 +61,7 @@ class DeepLabModel(object):
         self.OUTPUT_TENSOR_NAME,
         feed_dict={self.INPUT_TENSOR_NAME: [np.asarray(resized_image)]})
     seg_map = batch_seg_map[0]
+
     return resized_image, seg_map
 
 
@@ -119,6 +120,12 @@ def run_segmentation(image_path, output_path):
     a_array[idx] = 255
 
     result = Image.fromarray(a_array.astype(np.uint8))
+
+    print(original_image.size)
+
+    # resize the segmentation map back to the original image
+    result = result.resize(original_image.size, Image.ANTIALIAS)
+
     result.save(output_path)
 
 MODEL = DeepLabModel('./deeplab/deeplabv3_mnv2_pascal_train_aug/frozen_inference_graph.pb')
