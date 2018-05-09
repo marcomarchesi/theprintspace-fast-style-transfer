@@ -16,7 +16,7 @@ from deeplab import run_segmentation
 
 
 import cv2
-from PIL import Image
+from PIL import Image, ImageFilter
 
 
 from datetime import datetime 
@@ -42,6 +42,8 @@ def mask_img(a_image, mask, b_image, output):
     mask_array = np.asarray(_mask)
     a_array = np.asarray(_a_image)
     b_array = np.asarray(_b_image)
+    print(a_array.shape)
+    print(mask_array.shape)
     idx=(mask_array==0) # mask white pixels
 
     a_array.setflags(write=1)
@@ -161,10 +163,16 @@ def ffwd_different_dimensions(in_path, out_path, foreground_ckpt, background_ckp
             shape = "%dx%dx%d" % get_img(in_image).shape
             in_path_of_shape[shape].append(in_image)
             out_path_of_shape[shape].append(out_image)
+
+    # write log file
+    log_file_path = os.path.join(os.path.dirname(out_path[0]), 'style_transfer.log')
+    f = open(log_file_path, 'w')
     for shape in in_path_of_shape:
         startTime= datetime.now()
-        print('Processing images of shape %s' % shape)
-        print('with path: %s' % in_path_of_shape[shape][0])
+        out_string = 'Image of shape %s\n' % shape
+        out_string += 'with path: %s\n' % in_path_of_shape[shape][0]
+        f.write(out_string)
+
         if background_ckpt != None:
             ffwd_combine(in_path_of_shape[shape], out_path_of_shape[shape], 
                 foreground_ckpt, background_ckpt, device_t, batch_size, train)
@@ -174,6 +182,9 @@ def ffwd_different_dimensions(in_path, out_path, foreground_ckpt, background_ckp
 
         timeElapsed=datetime.now()-startTime 
         print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
+        f.write('written in (hh:mm:ss.ms) %s\n\n' % timeElapsed)
+
+    f.close()
 
 def build_parser():
     parser = ArgumentParser()
