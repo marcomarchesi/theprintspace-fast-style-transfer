@@ -55,7 +55,7 @@ def mask_img(a_image, mask, b_image, output):
 
 
 # get img_shape
-def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4):
+def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4, train=False, auto_seg=False):
 
     assert len(paths_out) > 0
     is_paths = type(data_in[0]) == str
@@ -123,7 +123,7 @@ def ffwd_to_img(in_path, out_path, checkpoint_dir, device='/cpu:0'):
     ffwd(paths_in, paths_out, checkpoint_dir, batch_size=1, device_t=device)
 
 def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt, 
-    device_t=DEVICE, batch_size=4, train=False):
+    device_t=DEVICE, batch_size=4, train=False, auto_seg=False):
 
     background_out_path = [os.path.join(os.path.dirname(i), "back_" + os.path.basename(i)) for i in out_path]
 
@@ -140,7 +140,8 @@ def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt,
     output_image_path = os.path.join(stylized_image_dir, output_image_name)
 
     print("Segmenting image...")
-    run_segmentation(in_path[0], segmented_image_path)
+    if auto_seg:
+        run_segmentation(in_path[0], segmented_image_path)
 
     # C = A * mask + B * (1 - mask)
     # convert(path_in, stylized_image_path, out_path[0])
@@ -153,7 +154,7 @@ def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt,
 
 
 def ffwd_different_dimensions(in_path, out_path, foreground_ckpt, background_ckpt=None, 
-            device_t=DEVICE, batch_size=4, train=False):
+            device_t=DEVICE, batch_size=4, train=False, auto_seg=False):
     in_path_of_shape = defaultdict(list)
     out_path_of_shape = defaultdict(list)
     for i in range(len(in_path)):
@@ -175,10 +176,10 @@ def ffwd_different_dimensions(in_path, out_path, foreground_ckpt, background_ckp
 
         if background_ckpt != None:
             ffwd_combine(in_path_of_shape[shape], out_path_of_shape[shape], 
-                foreground_ckpt, background_ckpt, device_t, batch_size, train)
+                foreground_ckpt, background_ckpt, device_t, batch_size, train, auto_seg)
         else:
             ffwd(in_path_of_shape[shape], out_path_of_shape[shape], 
-                foreground_ckpt, device_t, batch_size, train)
+                foreground_ckpt, device_t, batch_size, train, auto_seg)
 
         timeElapsed=datetime.now()-startTime 
         print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
@@ -193,7 +194,7 @@ def build_parser():
                         help='dir or .ckpt file to load checkpoint from',
                         metavar='CHECKPOINT', required=True)
 
-    parser.add_argument('--background_checkpoint', type=str,
+    parser.add_argument('--background-checkpoint', type=str,
                         dest='background_ckpt_dir',
                         help="dir or .ckpt for background style",
                         metavar='BACKGROUND_CHECKPOINT', required=False)
@@ -222,6 +223,10 @@ def build_parser():
     parser.add_argument('--smooth-affine', action='store_true',
                         dest='smooth_affine', 
                         help='smooth affine')
+
+    parser.add_argument('--automatic-segmentation', action='store_true',
+                        dest='automatic_segmentation',
+                        help='run automatic segmentation', default=False)
 
 
     return parser
@@ -253,7 +258,8 @@ def main():
         full_out = [os.path.join(opts.out_path,x) for x in files]
         # multiple dimensions allowed
         ffwd_different_dimensions(full_in, full_out, opts.checkpoint_dir, opts.background_ckpt_dir, 
-            device_t=opts.device, batch_size=opts.batch_size, train=opts.train)
+            device_t=opts.device, batch_size=opts.batch_size, train=opts.train, 
+            auto_seg=opts.automatic_segmentation)
 
 if __name__ == '__main__':
     main()
