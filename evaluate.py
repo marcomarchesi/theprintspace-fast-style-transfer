@@ -44,12 +44,19 @@ def mask_img(a_image, mask, b_image, output):
     b_array = np.asarray(_b_image)
     print(a_array.shape)
     print(mask_array.shape)
-    idx=(mask_array==0) # mask white pixels
-
+    
+    # write permissions
     a_array.setflags(write=1)
-    a_array[idx] = b_array[idx]
-    # a_array[idx[...,0],1]= b_array[idx[...,0],1]
-    # a_array[idx[...,0],2]= b_array[idx[...,0],2]
+
+    # weighting
+    mask_array = mask_array / 255
+    for i in range(3):
+        a_array[:,:,i] = b_array[:,:,i] * (1 - mask_array[:,:,0]) + a_array[:,:,i] * mask_array[:,:,0]
+
+    # mask with idx
+    # idx=(mask_array==0) # mask white pixels
+    # a_array[idx] = b_array[idx]
+
     im = Image.fromarray(a_array)
     im.save(output)
 
