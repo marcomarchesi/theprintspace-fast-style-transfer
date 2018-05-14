@@ -1,6 +1,7 @@
 import numpy as np
 import sklearn.neighbors
 import scipy.sparse
+import scipy.ndimage
 import warnings
 from argparse import ArgumentParser
 
@@ -8,7 +9,7 @@ nn = 10
 
 parser = ArgumentParser()
 parser.add_argument('--original')
-parser.add_argument('--trimap')
+parser.add_argument('--mask')
 parser.add_argument('--output')
 args = parser.parse_args()
 
@@ -53,12 +54,17 @@ def knn_matte(img, trimap, mylambda=100):
 
 def main():
     img = scipy.misc.imread(args.original)[:,:,:3]
-    trimap = scipy.misc.imread(args.trimap)[:,:,:3]
-    alpha = knn_matte(img, trimap)
-    scipy.misc.imsave(args.output, alpha)
-    # plt.title('Alpha Matte')
-    # plt.imshow(alpha, cmap='gray')
-    # plt.show()
+    mask = scipy.misc.imread(args.mask)
+
+    # generate trimap automatically from erode/dilate operations
+    mask_erosion = scipy.ndimage.binary_erosion(mask, structure=np.ones((50,50)))
+    mask_dilation = scipy.ndimage.binary_dilation(mask, structure=np.ones((50,50)))
+    scipy.misc.imsave(args.output, mask_erosion)
+
+
+    
+    # alpha = knn_matte(img, trimap)
+    # scipy.misc.imsave(args.output, alpha)
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
