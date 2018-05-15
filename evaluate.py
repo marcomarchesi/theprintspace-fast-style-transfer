@@ -155,7 +155,7 @@ def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt,
     if auto_seg:
         run_segmentation(in_path[0], segmented_image_path)
         # refining segmentation
-        image_matte(in_path[0], mask_image_path)
+        image_matte(in_path[0], segmented_image_path, mask_image_path)
 
 
     # C = A * mask + B * (1 - mask)

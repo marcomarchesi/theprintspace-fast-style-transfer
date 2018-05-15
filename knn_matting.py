@@ -48,6 +48,7 @@ def knn_matte(img, trimap, mylambda=100):
     try:
         alpha = np.minimum(np.maximum(scipy.sparse.linalg.spsolve(H, c), 0), 1).reshape(m, n)
     except Warning:
+        print("Troubles...")
         x = scipy.sparse.linalg.lsqr(H, c)
         alpha = np.minimum(np.maximum(x[0], 0), 1).reshape(m, n)
     return alpha
@@ -59,26 +60,29 @@ def main():
     alpha = knn_matte(img, mask)
     scipy.misc.imsave(args.output, alpha)
 
-def image_matte(image, output_path):
+def image_matte(image, mask, output_path, size=700):
     img = scipy.misc.imread(image)[:,:,:3]
     print("Generating trimap...")
-    trimap = generate_trimap(img)
+    trimap = generate_trimap(scipy.misc.imread(mask)[:,:,0])
+    scipy.misc.imsave("temp_trimap.jpg", trimap)
+
     print("Refining mask...")
 
     # scale down both image and mask
-    w,h = img.shape[0], img.shape[1]
-    aspect_ratio = w / h
-    reduced_h = round(h * aspect_ratio)
+    h,w = img.shape[0], img.shape[1]
+
+    reduced_w = w / size
+    reduced_h = round(h / reduced_w)
 
     # scale down
-    resized_img = scipy.misc.imresize(img, size=(500, reduced_h))
-    resized_trimap = scipy.misc.imresize(trimap, size(500, reduced_h))
+    resized_img = scipy.misc.imresize(img, size=(size, reduced_h))
+    resized_trimap = scipy.misc.imresize(trimap, size=(size, reduced_h))
 
     # matting on resized masks
     refined_mask = knn_matte(resized_img, resized_trimap)
 
     # scale up
-    refined_mask = scipy.misc.imresize(refined_mask, size=(w,h))
+    refined_mask = scipy.misc.imresize(refined_mask, size=(h,w))
 
     scipy.misc.imsave(output_path, refined_mask)
 

@@ -8,7 +8,6 @@ import numpy as np
 
 
 def generate_trimap(img):
-    img = img[:,:,0]
 
     num_iterations = int(img.shape[0] * 0.05)
 
