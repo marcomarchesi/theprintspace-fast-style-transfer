@@ -4,14 +4,15 @@ import scipy.sparse
 import scipy.ndimage
 import warnings
 from argparse import ArgumentParser
+from trimap import generate_trimap
 
 nn = 10
 
-parser = ArgumentParser()
-parser.add_argument('--original')
-parser.add_argument('--mask')
-parser.add_argument('--output')
-args = parser.parse_args()
+# parser = ArgumentParser()
+# parser.add_argument('--original')
+# parser.add_argument('--mask')
+# parser.add_argument('--output')
+# args = parser.parse_args()
 
 
 def knn_matte(img, trimap, mylambda=100):
@@ -55,18 +56,33 @@ def knn_matte(img, trimap, mylambda=100):
 def main():
     img = scipy.misc.imread(args.original)[:,:,:3]
     mask = scipy.misc.imread(args.mask)
+    alpha = knn_matte(img, mask)
+    scipy.misc.imsave(args.output, alpha)
 
-    # generate trimap automatically from erode/dilate operations
-    mask_erosion = scipy.ndimage.binary_erosion(mask, structure=np.ones((50,50)))
-    mask_dilation = scipy.ndimage.binary_dilation(mask, structure=np.ones((50,50)))
-    scipy.misc.imsave(args.output, mask_erosion)
+def image_matte(image, output_path):
+    img = scipy.misc.imread(image)[:,:,:3]
+    print("Generating trimap...")
+    trimap = generate_trimap(img)
+    print("Refining mask...")
 
+    # scale down both image and mask
+    w,h = img.shape[0], img.shape[1]
+    aspect_ratio = w / h
+    reduced_h = round(h * aspect_ratio)
 
-    
-    # alpha = knn_matte(img, trimap)
-    # scipy.misc.imsave(args.output, alpha)
+    # scale down
+    resized_img = scipy.misc.imresize(img, size=(500, reduced_h))
+    resized_trimap = scipy.misc.imresize(trimap, size(500, reduced_h))
 
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    import scipy.misc
-    main()
+    # matting on resized masks
+    refined_mask = knn_matte(resized_img, resized_trimap)
+
+    # scale up
+    refined_mask = scipy.misc.imresize(refined_mask, size=(w,h))
+
+    scipy.misc.imsave(output_path, refined_mask)
+
+# if __name__ == '__main__':
+#     import matplotlib.pyplot as plt
+#     import scipy.misc
+#     main()

@@ -13,6 +13,7 @@ import subprocess
 import numpy
 from luminance_utils import convert
 from deeplab import run_segmentation
+from knn_matting import image_matte
 
 
 import cv2
@@ -27,7 +28,7 @@ DEVICE = '/cpu:0'
 soft_config = tf.ConfigProto(allow_soft_placement=True)
 soft_config.gpu_options.allow_growth = True
 
-def mask_img(a_image, mask, b_image, output):
+def mask_img(a_image, b_image, mask, output):
 
     _mask = Image.open(mask)
         # open images A,B
@@ -42,8 +43,6 @@ def mask_img(a_image, mask, b_image, output):
     mask_array = np.asarray(_mask)
     a_array = np.asarray(_a_image)
     b_array = np.asarray(_b_image)
-    print(a_array.shape)
-    print(mask_array.shape)
     
     # write permissions
     a_array.setflags(write=1)
@@ -144,15 +143,20 @@ def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt,
     print("Post_processing...")
     content_image_name = os.path.basename(in_path[0])
     segmented_image_name = "seg_" + content_image_name
+    mask_image_name = "mask_" + content_image_name
     output_image_name = "out_" + content_image_name
     stylized_image_dir = os.path.dirname(out_path[0])
     stylized_image_path = os.path.join(stylized_image_dir, content_image_name)
     segmented_image_path = os.path.join(stylized_image_dir, segmented_image_name)
+    mask_image_path = os.path.join(stylized_image_dir, mask_image_name)
     output_image_path = os.path.join(stylized_image_dir, output_image_name)
 
     print("Segmenting image...")
     if auto_seg:
         run_segmentation(in_path[0], segmented_image_path)
+        # refining segmentation
+        image_matte(in_path[0], mask_image_path)
+
 
     # C = A * mask + B * (1 - mask)
     # convert(path_in, stylized_image_path, out_path[0])
@@ -161,7 +165,7 @@ def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt,
 
     # masking
     print("Masking...")
-    mask_img(out_path[0], segmented_image_path, background_out_path[0], output_image_path)
+    mask_img(out_path[0], background_out_path[0], mask_image_path, output_image_path)
 
 
 def ffwd_different_dimensions(in_path, out_path, foreground_ckpt, background_ckpt=None, 
