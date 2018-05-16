@@ -65,7 +65,7 @@ def mask_img(a_image, b_image, mask, output):
 
 
 # get img_shape
-def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4, train=False, auto_seg=False):
+def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', train=False, auto_seg=False):
 
     assert len(paths_out) > 0
     is_paths = type(data_in[0]) == str
@@ -76,6 +76,8 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4, tr
     else:
         assert data_in.size[0] == len(paths_out)
         img_shape = X[0].shape
+
+    batch_size = 1
 
 
     g = tf.Graph()
@@ -119,7 +121,6 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', batch_size=4, tr
             _preds = sess.run(preds, feed_dict={img_placeholder:X})
 
             for j, path_out in enumerate(curr_batch_out):
-
                 save_img(path_out, _preds[j])
 
         remaining_in = data_in[num_iters*batch_size:]
@@ -133,12 +134,14 @@ def ffwd_to_img(in_path, out_path, checkpoint_dir, device='/cpu:0'):
     ffwd(paths_in, paths_out, checkpoint_dir, batch_size=1, device_t=device)
 
 def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt, 
-    device_t=DEVICE, batch_size=4, train=False, auto_seg=False):
+    device_t=DEVICE, train=False, auto_seg=False):
 
     background_out_path = [os.path.join(os.path.dirname(i), "back_" + os.path.basename(i)) for i in out_path]
 
-    ffwd(in_path, out_path, foreground_ckpt, device_t, batch_size)
-    ffwd(in_path, background_out_path, background_ckpt, device_t, batch_size)
+    print("FOREGROUND STYLE TRANSFER")
+    ffwd(in_path, out_path, foreground_ckpt, device_t)
+    print("BACKGROUND STYLE TRANSFER")
+    ffwd(in_path, background_out_path, background_ckpt, device_t)
 
     print("Post_processing...")
     content_image_name = os.path.basename(in_path[0])
@@ -169,7 +172,7 @@ def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt,
 
 
 def ffwd_different_dimensions(in_path, out_path, foreground_ckpt, background_ckpt=None, 
-            device_t=DEVICE, batch_size=4, train=False, auto_seg=False):
+            device_t=DEVICE, train=False, auto_seg=False):
     in_path_of_shape = defaultdict(list)
     out_path_of_shape = defaultdict(list)
     for i in range(len(in_path)):
@@ -182,8 +185,9 @@ def ffwd_different_dimensions(in_path, out_path, foreground_ckpt, background_ckp
 
     # write log file
     log_file_path = os.path.join(os.path.dirname(out_path[0]), 'style_transfer.log')
-    f = open(log_file_path, 'w')
+    
     for shape in in_path_of_shape:
+        f = open(log_file_path, 'w')
         startTime= datetime.now()
         out_string = 'Image of shape %s\n' % shape
         out_string += 'with path: %s\n' % in_path_of_shape[shape][0]
@@ -191,16 +195,15 @@ def ffwd_different_dimensions(in_path, out_path, foreground_ckpt, background_ckp
 
         if background_ckpt != None:
             ffwd_combine(in_path_of_shape[shape], out_path_of_shape[shape], 
-                foreground_ckpt, background_ckpt, device_t, batch_size, train, auto_seg)
+                foreground_ckpt, background_ckpt, device_t, train, auto_seg)
         else:
             ffwd(in_path_of_shape[shape], out_path_of_shape[shape], 
-                foreground_ckpt, device_t, batch_size, train, auto_seg)
+                foreground_ckpt, device_t, train, auto_seg)
 
         timeElapsed=datetime.now()-startTime 
         print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
         f.write('written in (hh:mm:ss.ms) %s\n\n' % timeElapsed)
-
-    f.close()
+        f.close()
 
 def build_parser():
     parser = ArgumentParser()
@@ -273,7 +276,7 @@ def main():
         full_out = [os.path.join(opts.out_path,x) for x in files]
         # multiple dimensions allowed
         ffwd_different_dimensions(full_in, full_out, opts.checkpoint_dir, opts.background_ckpt_dir, 
-            device_t=opts.device, batch_size=opts.batch_size, train=opts.train, 
+            device_t=opts.device, train=opts.train, 
             auto_seg=opts.automatic_segmentation)
 
 if __name__ == '__main__':

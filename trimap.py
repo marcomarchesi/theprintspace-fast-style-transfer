@@ -17,7 +17,7 @@ def generate_trimap(img):
 
     # trimap as difference between dilated and eroded masks
     trimap_img = np.full(shape=(img.shape[0], img.shape[1]), fill_value=127)
-    trimap_img = (dilated_img - eroded_img).astype(img.dtype)
+    trimap_img = np.subtract(dilated_img, eroded_img, dtype=img.dtype)
 
     # find the indices where pixels are white and replace with gray=127
     idx = (trimap_img > 0)

@@ -24,11 +24,9 @@ def save_conv(out_path, img, filters):
 
 def save_img(out_path, img):
     img = np.clip(img, 0, 255).astype(np.uint8)
-    print(img.shape)
-    img = np.squeeze(img)
-    print(img.shape)
-    # scipy.misc.imsave(out_path, img)
+    img = img[0]
     print("saving %s" % out_path)
+
     imageio.imwrite(out_path, img)
 
 def resize_img(src, size):

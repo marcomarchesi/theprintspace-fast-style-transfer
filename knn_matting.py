@@ -5,6 +5,7 @@ import scipy.ndimage
 import warnings
 from argparse import ArgumentParser
 from trimap import generate_trimap
+import skimage, skimage.transform
 
 nn = 10
 
@@ -43,12 +44,12 @@ def knn_matte(img, trimap, mylambda=100):
     H = 2*(L + mylambda*D)
 
     print('Solving linear system for alpha')
-    warnings.filterwarnings('error')
+    # warnings.filterwarnings('error')
     alpha = []
     try:
         alpha = np.minimum(np.maximum(scipy.sparse.linalg.spsolve(H, c), 0), 1).reshape(m, n)
     except Warning:
-        print("Troubles...")
+        print("troubles with singular matrix...")
         x = scipy.sparse.linalg.lsqr(H, c)
         alpha = np.minimum(np.maximum(x[0], 0), 1).reshape(m, n)
     return alpha
@@ -60,11 +61,11 @@ def main():
     alpha = knn_matte(img, mask)
     scipy.misc.imsave(args.output, alpha)
 
-def image_matte(image, mask, output_path, size=700):
+def image_matte(image, mask, output_path, size=500):
     img = scipy.misc.imread(image)[:,:,:3]
     print("Generating trimap...")
     trimap = generate_trimap(scipy.misc.imread(mask)[:,:,0])
-    scipy.misc.imsave("temp_trimap.jpg", trimap)
+    # scipy.misc.imsave("temp_trimap.jpg", trimap)
 
     print("Refining mask...")
 
