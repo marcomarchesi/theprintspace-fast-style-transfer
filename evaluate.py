@@ -67,28 +67,14 @@ def mask_img(a_image, b_image, mask, output):
 # get img_shape
 def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', train=False, auto_seg=False):
 
-    assert len(paths_out) > 0
-    is_paths = type(data_in[0]) == str
-
-    if is_paths:
-        assert len(data_in) == len(paths_out)
-        img_shape = get_img(data_in[0]).shape
-    else:
-        assert data_in.size[0] == len(paths_out)
-        img_shape = X[0].shape
-
-    batch_size = 1
-
+    img_shape = get_img(data_in).shape
 
     g = tf.Graph()
-    batch_size = min(len(paths_out), batch_size)
-    curr_num = 0
 
     with g.as_default(), g.device(device_t), tf.Session(config=soft_config) as sess:
-        batch_shape = (batch_size,) + img_shape
+        batch_shape = (1,) + img_shape
         img_placeholder = tf.placeholder(tf.float32, shape=batch_shape,
                                          name='img_placeholder')
-        
 
         preds = transform.net(img_placeholder)
 
@@ -102,41 +88,20 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', train=False, aut
         else:
             saver.restore(sess, checkpoint_dir)
 
-        num_iters = int(len(paths_out)/batch_size)
-        for i in range(num_iters):
-            pos = i * batch_size
-            curr_batch_out = paths_out[pos:pos+batch_size]
-            if is_paths:
-                curr_batch_in = data_in[pos:pos+batch_size]
-                X = np.zeros(batch_shape, dtype=np.float32)
-                for j, path_in in enumerate(curr_batch_in):
-                    img = get_img(path_in)
-                    assert img.shape == img_shape, \
-                        'Images have different dimensions. ' +  \
-                        'Resize images or use --allow-different-dimensions.'
-                    X[j] = img
-            else:
-                X = data_in[pos:pos+batch_size]
+        X = np.zeros(batch_shape, dtype=np.float32)
+        img = get_img(data_in)
+        X[0] = img
 
-            _preds = sess.run(preds, feed_dict={img_placeholder:X})
+        _preds = sess.run(preds, feed_dict={img_placeholder:X})
+        save_img(paths_out, _preds[0])
 
-            for j, path_out in enumerate(curr_batch_out):
-                save_img(path_out, _preds[j])
-
-        remaining_in = data_in[num_iters*batch_size:]
-        remaining_out = paths_out[num_iters*batch_size:]
-    if len(remaining_in) > 0:
-        ffwd(remaining_in, remaining_out, checkpoint_dir, 
-            device_t=device_t, batch_size=1)
-
-def ffwd_to_img(in_path, out_path, checkpoint_dir, device='/cpu:0'):
-    paths_in, paths_out = [in_path], [out_path]
-    ffwd(paths_in, paths_out, checkpoint_dir, batch_size=1, device_t=device)
 
 def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt, 
     device_t=DEVICE, train=False, auto_seg=False):
+    
 
-    background_out_path = [os.path.join(os.path.dirname(i), "back_" + os.path.basename(i)) for i in out_path]
+    background_out_name = "back_" + os.path.basename(out_path)
+    background_out_path = os.path.join(os.path.dirname(out_path), background_out_name)
 
     print("FOREGROUND STYLE TRANSFER")
     ffwd(in_path, out_path, foreground_ckpt, device_t)
@@ -144,11 +109,11 @@ def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt,
     ffwd(in_path, background_out_path, background_ckpt, device_t)
 
     print("Post_processing...")
-    content_image_name = os.path.basename(in_path[0])
+    content_image_name = os.path.basename(in_path)
     segmented_image_name = "seg_" + content_image_name
     mask_image_name = "mask_" + content_image_name
     output_image_name = "out_" + content_image_name
-    stylized_image_dir = os.path.dirname(out_path[0])
+    stylized_image_dir = os.path.dirname(out_path)
     stylized_image_path = os.path.join(stylized_image_dir, content_image_name)
     segmented_image_path = os.path.join(stylized_image_dir, segmented_image_name)
     mask_image_path = os.path.join(stylized_image_dir, mask_image_name)
@@ -156,53 +121,53 @@ def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt,
 
     print("Segmenting image...")
     if auto_seg:
-        run_segmentation(in_path[0], segmented_image_path)
+        run_segmentation(in_path, segmented_image_path)
         # refining segmentation
-        image_matte(in_path[0], segmented_image_path, mask_image_path)
+        image_matte(in_path, segmented_image_path, mask_image_path)
 
 
     # C = A * mask + B * (1 - mask)
     # convert(path_in, stylized_image_path, out_path[0])
-    convert(in_path[0], out_path[0], out_path[0])
-    convert(in_path[0], background_out_path[0], background_out_path[0])
+    convert(in_path, out_path, out_path)
+    convert(in_path, background_out_path, background_out_path)
 
     # masking
     print("Masking...")
-    mask_img(out_path[0], background_out_path[0], mask_image_path, output_image_path)
+    mask_img(out_path, background_out_path, mask_image_path, output_image_path)
 
 
-def ffwd_different_dimensions(in_path, out_path, foreground_ckpt, background_ckpt=None, 
+def stylize(in_path, out_path, foreground_ckpt, background_ckpt=None, 
             device_t=DEVICE, train=False, auto_seg=False):
-    in_path_of_shape = defaultdict(list)
-    out_path_of_shape = defaultdict(list)
+    images_in_path = []
+    images_out_path = []
     for i in range(len(in_path)):
         if in_path[i].lower().endswith(('.png', '.jpg', '.jpeg')): 
-            in_image = in_path[i]
-            out_image = out_path[i]
-            shape = "%dx%dx%d" % get_img(in_image).shape
-            in_path_of_shape[shape].append(in_image)
-            out_path_of_shape[shape].append(out_image)
+            images_in_path.append(in_path[i])
+            images_out_path.append(out_path[i])
 
     # write log file
     log_file_path = os.path.join(os.path.dirname(out_path[0]), 'style_transfer.log')
     
-    for shape in in_path_of_shape:
-        f = open(log_file_path, 'w')
+    for i in range(len(images_in_path)):
+        f = open(log_file_path, 'a')
+        
         startTime= datetime.now()
-        out_string = 'Image of shape %s\n' % shape
-        out_string += 'with path: %s\n' % in_path_of_shape[shape][0]
+        # add shape for image
+        img_shape = get_img(images_in_path[i]).shape
+        out_string = 'Image of size %sx%s\n' % (img_shape[0], img_shape[1])
+        out_string += '-- with path: %s\n' % images_in_path[i]
         f.write(out_string)
 
         if background_ckpt != None:
-            ffwd_combine(in_path_of_shape[shape], out_path_of_shape[shape], 
+            ffwd_combine(images_in_path[i], images_out_path[i], 
                 foreground_ckpt, background_ckpt, device_t, train, auto_seg)
         else:
-            ffwd(in_path_of_shape[shape], out_path_of_shape[shape], 
+            ffwd(images_in_path[i], images_out_path[i], 
                 foreground_ckpt, device_t, train, auto_seg)
 
         timeElapsed=datetime.now()-startTime 
         print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
-        f.write('written in (hh:mm:ss.ms) %s\n\n' % timeElapsed)
+        f.write('-- written in (hh:mm:ss.ms) %s\n\n' % timeElapsed)
         f.close()
 
 def build_parser():
@@ -238,10 +203,6 @@ def build_parser():
                         dest='train', 
                         help='evaluate during training process', default=False)
 
-    parser.add_argument('--smooth-affine', action='store_true',
-                        dest='smooth_affine', 
-                        help='smooth affine')
-
     parser.add_argument('--automatic-segmentation', action='store_true',
                         dest='automatic_segmentation',
                         help='run automatic segmentation', default=False)
@@ -261,25 +222,13 @@ def main():
     opts = parser.parse_args()
     check_opts(opts)
 
-    if not os.path.isdir(opts.in_path):
-        if os.path.exists(opts.out_path) and os.path.isdir(opts.out_path):
-            out_path = \
-                    os.path.join(opts.out_path,os.path.basename(opts.in_path))
-        else:
-            out_path = opts.out_path
-
-        ffwd_to_img(opts.in_path, out_path, opts.checkpoint_dir,
-                    device=opts.device)
-    else:
-        files = list_files(opts.in_path)
-        full_in = [os.path.join(opts.in_path,x) for x in files]
-        full_out = [os.path.join(opts.out_path,x) for x in files]
-        # multiple dimensions allowed
-        ffwd_different_dimensions(full_in, full_out, opts.checkpoint_dir, opts.background_ckpt_dir, 
-            device_t=opts.device, train=opts.train, 
-            auto_seg=opts.automatic_segmentation)
+    files = list_files(opts.in_path)
+    full_in = [os.path.join(opts.in_path,x) for x in files]
+    full_out = [os.path.join(opts.out_path,x) for x in files]
+    # multiple dimensions allowed
+    stylize(full_in, full_out, opts.checkpoint_dir, opts.background_ckpt_dir, 
+        device_t=opts.device, train=opts.train, 
+        auto_seg=opts.automatic_segmentation)
 
 if __name__ == '__main__':
     main()
-    # timeElapsed=datetime.now()-startTime 
-    # print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
