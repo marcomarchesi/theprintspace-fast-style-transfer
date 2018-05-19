@@ -4,7 +4,7 @@ sys.path.insert(0, 'src')
 import transform, numpy as np, vgg, pdb, os
 import scipy.misc
 import tensorflow as tf
-from utils import save_img, get_img, exists, list_files, resize_img
+from utils import save_img, get_img, get_bw_img, exists, list_files, resize_img
 from argparse import ArgumentParser
 from collections import defaultdict
 import time
@@ -65,7 +65,7 @@ def mask_img(a_image, b_image, mask, output):
 
 
 # get img_shape
-def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', train=False, auto_seg=False):
+def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', bw=False):
 
     img_shape = get_img(data_in).shape
 
@@ -89,7 +89,11 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', train=False, aut
             saver.restore(sess, checkpoint_dir)
 
         X = np.zeros(batch_shape, dtype=np.float32)
-        img = get_img(data_in)
+        if bw:
+            img = get_bw_img(data_in)
+
+        else:
+            img = get_img(data_in)
         X[0] = img
 
         _preds = sess.run(preds, feed_dict={img_placeholder:X})
@@ -97,16 +101,17 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', train=False, aut
 
 
 def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt, 
-    device_t=DEVICE, train=False, auto_seg=False):
+    device_t=DEVICE, auto_seg=False, bw=False):
+    
     
 
     background_out_name = "back_" + os.path.basename(out_path)
     background_out_path = os.path.join(os.path.dirname(out_path), background_out_name)
 
     print("FOREGROUND STYLE TRANSFER")
-    ffwd(in_path, out_path, foreground_ckpt, device_t)
+    ffwd(in_path, out_path, foreground_ckpt, device_t, bw)
     print("BACKGROUND STYLE TRANSFER")
-    ffwd(in_path, background_out_path, background_ckpt, device_t)
+    ffwd(in_path, background_out_path, background_ckpt, device_t, bw)
 
     print("Post_processing...")
     content_image_name = os.path.basename(in_path)
@@ -137,7 +142,9 @@ def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt,
 
 
 def stylize(in_path, out_path, foreground_ckpt, background_ckpt=None, 
-            device_t=DEVICE, train=False, auto_seg=False):
+            device_t=DEVICE, auto_seg=False, bw=False):
+
+
     images_in_path = []
     images_out_path = []
     for i in range(len(in_path)):
@@ -160,10 +167,10 @@ def stylize(in_path, out_path, foreground_ckpt, background_ckpt=None,
 
         if background_ckpt != None:
             ffwd_combine(images_in_path[i], images_out_path[i], 
-                foreground_ckpt, background_ckpt, device_t, train, auto_seg)
+                foreground_ckpt, background_ckpt, device_t, auto_seg, bw)
         else:
             ffwd(images_in_path[i], images_out_path[i], 
-                foreground_ckpt, device_t, train, auto_seg)
+                foreground_ckpt, device_t, auto_seg, bw)
 
         timeElapsed=datetime.now()-startTime 
         print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
@@ -199,13 +206,13 @@ def build_parser():
                         dest='batch_size',help='batch size for feedforwarding',
                         metavar='BATCH_SIZE', default=BATCH_SIZE)
 
-    parser.add_argument('--train', action='store_true',
-                        dest='train', 
-                        help='evaluate during training process', default=False)
-
     parser.add_argument('--automatic-segmentation', action='store_true',
                         dest='automatic_segmentation',
                         help='run automatic segmentation', default=False)
+
+    parser.add_argument('--black-white', action='store_true',
+                    dest='black_white',
+                    help='black & white style transfer', default=False)
 
 
     return parser
@@ -227,8 +234,8 @@ def main():
     full_out = [os.path.join(opts.out_path,x) for x in files]
     # multiple dimensions allowed
     stylize(full_in, full_out, opts.checkpoint_dir, opts.background_ckpt_dir, 
-        device_t=opts.device, train=opts.train, 
-        auto_seg=opts.automatic_segmentation)
+        device_t=opts.device, 
+        auto_seg=opts.automatic_segmentation, bw=opts.black_white)
 
 if __name__ == '__main__':
     main()

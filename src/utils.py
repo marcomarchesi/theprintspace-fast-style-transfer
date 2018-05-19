@@ -2,7 +2,7 @@ import scipy.misc, numpy as np, os, sys
 
 import imageio
 
-from PIL import ImageFile, Image
+from PIL import ImageFile, Image, ImageEnhance
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -55,6 +55,16 @@ def get_img(src, img_size=False):
    if img_size != False:
        img = scipy.misc.imresize(img, img_size)
    return img
+
+def get_bw_img(src):
+  image = Image.open(src)
+  desaturated_op = ImageEnhance.Color(image)
+  desaturated_image = desaturated_op.enhance(0.0)
+  img = np.asarray(desaturated_image)
+  if not (len(img.shape) == 3 and img.shape[2] == 3):
+    img = np.dstack((img,img,img))
+  return img
+
 
 def exists(p, msg):
     assert os.path.exists(p), msg
