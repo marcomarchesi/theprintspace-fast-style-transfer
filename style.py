@@ -55,9 +55,6 @@ def build_parser():
                         dest='test_dir', help='test image save dir',
                         metavar='TEST_DIR', default=False)
 
-    parser.add_argument('--slow', dest='slow', action='store_true',
-                        help='gatys\' approach (for debugging, not supported)', default=False)
-
     parser.add_argument('--epochs', type=int,
                         dest='epochs', help='num epochs',
                         metavar='EPOCHS', default=NUM_EPOCHS)
@@ -161,13 +158,13 @@ def main():
     check_opts(options)
 
     style_target = options.style_image
-    if not options.slow:
+    if 1:
         content_targets = _get_files(options.train_path)
     elif options.test:
         content_targets = [options.test]
+    print(len(content_targets))
 
     kwargs = {
-        "slow":options.slow,
         "epochs":options.epochs,
         "print_iterations":options.checkpoint_iterations,
         "batch_size":options.batch_size,
@@ -181,12 +178,6 @@ def main():
         "contrast":options.contrast
     }
 
-    if options.slow:
-        if options.epochs < 10:
-            kwargs['epochs'] = 1000
-        if options.learning_rate < 1:
-            kwargs['learning_rate'] = 1e1
-
     args = [
         content_targets,
         style_target,
@@ -198,6 +189,7 @@ def main():
         options.luma_weight,
         options.vgg_path
     ]
+
 
 
     # save options as json file
@@ -226,17 +218,16 @@ def main():
         if options.test:
             assert options.test_dir != False
             preds_path = '%s/%s_%s.png' % (options.test_dir,epoch,i)
-            if not options.slow:
+            
                 # copy ckpt
-                src = os.path.join(options.checkpoint_dir, "fns.ckpt.data-00000-of-00001")
-                dst = os.path.join(options.checkpoint_dir, "fns.ckpt")
-                copyfile(src, dst)
+            src = os.path.join(options.checkpoint_dir, "fns.ckpt.data-00000-of-00001")
+            dst = os.path.join(options.checkpoint_dir, "fns.ckpt")
+            copyfile(src, dst)
 
-                ckpt_dir = os.path.dirname(options.checkpoint_dir)
-                evaluate.ffwd_to_img(options.test,preds_path,
-                                     options.checkpoint_dir)
-            else:
-                save_img(preds_path, img)
+            ckpt_dir = os.path.dirname(options.checkpoint_dir)
+            evaluate.ffwd_to_img(options.test,preds_path,
+                                 options.checkpoint_dir)
+
     ckpt_dir = options.checkpoint_dir
     end_time  = time.time()
     elapsed_time = end_time - start_time

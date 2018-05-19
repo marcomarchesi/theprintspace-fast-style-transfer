@@ -121,8 +121,6 @@ def run_segmentation(image_path, output_path):
 
     result = Image.fromarray(a_array.astype(np.uint8))
 
-    print(original_image.size)
-
     # resize the segmentation map back to the original image
     result = result.resize(original_image.size, Image.ANTIALIAS)
 

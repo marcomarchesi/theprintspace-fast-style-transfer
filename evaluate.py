@@ -63,6 +63,10 @@ def mask_img(a_image, b_image, mask, output):
     im = Image.fromarray(a_array)
     im.save(output)
 
+def ffwd_to_img(in_path, out_path, checkpoint_dir, device='/cpu:0', bw=False):
+    paths_in, paths_out = in_path, out_path
+    ffwd(paths_in, paths_out, checkpoint_dir, device_t=device, bw=bw)
+
 
 # get img_shape
 def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', bw=False):
@@ -89,11 +93,12 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', bw=False):
             saver.restore(sess, checkpoint_dir)
 
         X = np.zeros(batch_shape, dtype=np.float32)
+
         if bw:
             img = get_bw_img(data_in)
-
         else:
             img = get_img(data_in)
+
         X[0] = img
 
         _preds = sess.run(preds, feed_dict={img_placeholder:X})
@@ -102,8 +107,6 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/cpu:0', bw=False):
 
 def ffwd_combine(in_path, out_path, foreground_ckpt, background_ckpt, 
     device_t=DEVICE, auto_seg=False, bw=False):
-    
-    
 
     background_out_name = "back_" + os.path.basename(out_path)
     background_out_path = os.path.join(os.path.dirname(out_path), background_out_name)
@@ -154,6 +157,8 @@ def stylize(in_path, out_path, foreground_ckpt, background_ckpt=None,
 
     # write log file
     log_file_path = os.path.join(os.path.dirname(out_path[0]), 'style_transfer.log')
+    f = open(log_file_path, 'w') # delete all previous content
+    f.close()
     
     for i in range(len(images_in_path)):
         f = open(log_file_path, 'a')
@@ -167,10 +172,10 @@ def stylize(in_path, out_path, foreground_ckpt, background_ckpt=None,
 
         if background_ckpt != None:
             ffwd_combine(images_in_path[i], images_out_path[i], 
-                foreground_ckpt, background_ckpt, device_t, auto_seg, bw)
+                foreground_ckpt, background_ckpt, device_t=device_t, auto_seg=auto_seg, bw=bw)
         else:
             ffwd(images_in_path[i], images_out_path[i], 
-                foreground_ckpt, device_t, auto_seg, bw)
+                foreground_ckpt, device_t=device_t, bw=bw)
 
         timeElapsed=datetime.now()-startTime 
         print('Time elapsed (hh:mm:ss.ms) {}'.format(timeElapsed))
@@ -233,9 +238,13 @@ def main():
     full_in = [os.path.join(opts.in_path,x) for x in files]
     full_out = [os.path.join(opts.out_path,x) for x in files]
     # multiple dimensions allowed
-    stylize(full_in, full_out, opts.checkpoint_dir, opts.background_ckpt_dir, 
+    stylize(in_path=full_in, 
+        out_path=full_out, 
+        foreground_ckpt=opts.checkpoint_dir, 
+        background_ckpt=opts.background_ckpt_dir, 
         device_t=opts.device, 
-        auto_seg=opts.automatic_segmentation, bw=opts.black_white)
+        auto_seg=opts.automatic_segmentation, 
+        bw=opts.black_white)
 
 if __name__ == '__main__':
     main()

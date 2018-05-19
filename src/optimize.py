@@ -101,7 +101,7 @@ def show_features(features, image):
 # np arr, np arr
 def optimize(content_targets, style_target, content_weight, style_weight, contrast_weight,
              tv_weight, affine_weight, luma_weight, vgg_path, epochs=2, print_iterations=1,
-             batch_size=4, save_path='saver/fns.ckpt', slow=False,
+             batch_size=4, save_path='saver/fns.ckpt',
              learning_rate=1e-3, debug=False, no_gpu=False, logs=False, 
              affine=False, gradient=False, contrast=False, luma=False,
              multiple_style_images=False, num_examples=1000):
@@ -111,8 +111,6 @@ def optimize(content_targets, style_target, content_weight, style_weight, contra
     config = tf.ConfigProto(allow_soft_placement=True)
 
     
-    if slow:
-        batch_size = 1
     mod = len(content_targets) % batch_size
     if mod > 0:
         print("Train set has been trimmed slightly..")
